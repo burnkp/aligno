@@ -15,7 +15,7 @@ export const Navbar = () => {
   return (
     <div className="flex items-center p-4">
       <Sheet>
-        <SheetTrigger>
+        <SheetTrigger asChild>
           <Button variant="ghost" size="icon" className="md:hidden">
             <Menu />
           </Button>
