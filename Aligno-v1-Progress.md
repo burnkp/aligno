@@ -116,6 +116,97 @@ Located in `components/ui/`:
 }
 ```
 
+#### 3.1.6 Dashboard Action Buttons
+Located in `app/(dashboard)/(routes)/dashboard/page.tsx`:
+
+1. **Add Objective Button**
+   - Direct creation through CreateObjectiveModal
+   - No parent selection needed
+   - Connected to existing objective creation flow
+
+2. **Add Key Result Button**
+   - Two-step process:
+     1. SelectParentModal for choosing parent objective
+     2. CreateOKRModal for creating the key result
+   - Uses existing OKR creation functionality
+
+3. **Add KPI Button**
+   - Two-step process:
+     1. SelectParentModal for choosing parent OKR
+     2. CreateKPIModal for creating the KPI
+   - Connected to existing KPI creation flow
+
+#### Implementation Details:
+```typescript
+// Modal States
+const [isSelectObjectiveOpen, setIsSelectObjectiveOpen] = useState(false);
+const [isSelectOKROpen, setIsSelectOKROpen] = useState(false);
+const [selectedObjectiveId, setSelectedObjectiveId] = useState<Id<"strategicObjectives"> | null>(null);
+const [selectedOKRId, setSelectedOKRId] = useState<Id<"operationalKeyResults"> | null>(null);
+
+// Parent Selection Handlers
+const handleObjectiveSelect = (id: Id<"strategicObjectives">) => {
+  setSelectedObjectiveId(id);
+  setIsSelectObjectiveOpen(false);
+  setIsCreateOKROpen(true);
+};
+
+const handleOKRSelect = (id: Id<"operationalKeyResults">) => {
+  setSelectedOKRId(id);
+  setIsSelectOKROpen(false);
+  setIsCreateKPIOpen(true);
+};
+```
+
+#### 3.1.7 Data Calculations and Display
+Located in `app/(dashboard)/(routes)/dashboard/page.tsx`:
+
+1. **Summary Cards Data**:
+   - Total Objectives: Direct count of objectives
+   - Average Progress: Weighted average of all objectives
+   - Upcoming Deadlines: Items due within 7 days
+   - At Risk Items: Objectives with < 25% progress
+
+2. **Recent Activity**:
+   - Shows latest 5 objectives
+   - Includes progress indicators and due dates
+   - Color-coded status indicators
+
+3. **Team Progress**:
+   - Calculates per-team progress
+   - Shows team-specific metrics
+   - Visual progress indicators
+
+#### Data Calculation Details:
+```typescript
+// Summary Metrics
+const totalObjectives = objectives.length;
+const avgObjectiveProgress = objectives.length 
+  ? objectives.reduce((acc, obj) => acc + obj.progress, 0) / objectives.length 
+  : 0;
+
+// Upcoming Deadlines
+const upcomingDeadlines = objectives.filter(obj => {
+  const endDate = new Date(obj.endDate);
+  const now = new Date();
+  const sevenDaysFromNow = new Date();
+  sevenDaysFromNow.setDate(now.getDate() + 7);
+  return endDate > now && endDate <= sevenDaysFromNow;
+});
+
+// At Risk Items
+const atRiskItems = objectives.filter(obj => obj.progress < 25);
+
+// Team Progress
+const teamProgress = teams.map(team => {
+  const teamObjectives = objectives.filter(obj => obj.teamId === team._id);
+  const avgProgress = teamObjectives.length
+    ? teamObjectives.reduce((acc, obj) => acc + obj.progress, 0) / teamObjectives.length
+    : 0;
+  return { team, avgProgress };
+});
+```
+
 ### 3.2 Analytics
 - **Location**: `app/(dashboard)/(routes)/analytics/page.tsx`
 - **Components**:
