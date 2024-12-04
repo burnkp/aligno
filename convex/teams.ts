@@ -49,7 +49,7 @@ export const inviteMember = mutation({
     teamId: v.string(),
     email: v.string(),
     name: v.string(),
-    role: v.union(v.literal("admin"), v.literal("leader"), v.literal("member")),
+    role: v.union(v.literal("leader"), v.literal("member")),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -58,32 +58,20 @@ export const inviteMember = mutation({
     }
 
     // Check if user has permission to invite members
-    const team = await ctx.db
-      .query("teams")
-      .filter((q) => q.eq(q.field("_id"), args.teamId))
-      .unique();
-
+    const team = await ctx.db.get(args.teamId as Id<"teams">);
     if (!team) {
       throw new Error("Team not found");
     }
 
-    const currentUser = team.members.find(m => m.userId === identity.subject);
-    if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "leader")) {
-      throw new Error("Not authorized to invite members");
-    }
-
-    // Generate a unique invitation token
-    const invitationToken = Math.random().toString(36).substring(2);
-
     // Store the invitation in the database
     await ctx.db.insert("invitations", {
-      teamId: args.teamId,
+      teamId: args.teamId as Id<"teams">,
       email: args.email,
       name: args.name,
       role: args.role,
-      token: invitationToken,
+      token: Math.random().toString(36).substring(2),
       status: "pending",
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     });
 
     // Send invitation email
@@ -91,7 +79,7 @@ export const inviteMember = mutation({
       email: args.email,
       name: args.name,
       teamName: team.name,
-      invitationToken,
+      invitationToken: Math.random().toString(36).substring(2),
     });
 
     return { success: true };
@@ -147,5 +135,79 @@ export const acceptInvitation = mutation({
     });
 
     return { success: true };
+  },
+});
+
+// Get user's teams with their role
+export const getUserTeams = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const teams = await ctx.db
+      .query("teams")
+      .filter((q) => 
+        q.eq(
+          q.field("members"),
+          identity.subject
+        )
+      )
+      .collect();
+
+    return teams.map(team => ({
+      _id: team._id,
+      name: team.name,
+      role: team.members.find(m => m.userId === identity.subject)?.role
+    }));
+  },
+});
+
+// Get team data with objectives and KPIs
+export const getTeamWithObjectives = query({
+  args: { teamId: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const team = await ctx.db.get(args.teamId as Id<"teams">);
+    if (!team) throw new Error("Team not found");
+
+    // Check if user is member of team
+    const member = team.members.find(m => m.userId === identity.subject);
+    if (!member) throw new Error("Not authorized");
+
+    // Get team's objectives and KPIs
+    const objectives = await ctx.db
+      .query("strategicObjectives")
+      .filter(q => q.eq(q.field("teamId"), args.teamId))
+      .collect();
+
+    const kpis = await ctx.db
+      .query("kpis")
+      .filter(q => q.eq(q.field("teamId"), args.teamId))
+      .collect();
+
+    return {
+      ...team,
+      objectives,
+      kpis,
+    };
+  },
+});
+
+export const getUserRole = query({
+  args: { teamId: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const team = await ctx.db.get(args.teamId as Id<"teams">);
+    if (!team) throw new Error("Team not found");
+
+    const member = team.members.find(m => m.userId === identity.subject);
+    if (!member) return null;
+
+    return member.role;
   },
 });

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 
 export const createKPI = mutation({
   args: {
@@ -91,5 +92,44 @@ export const updateKPIValue = mutation({
     });
 
     return { progress };
+  },
+});
+
+export const update = mutation({
+  args: {
+    kpiId: v.string(),
+    currentValue: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const kpi = await ctx.db.get(args.kpiId as Id<"kpis">);
+    if (!kpi) {
+      throw new Error("KPI not found");
+    }
+
+    // Get team to check permissions
+    const team = await ctx.db.get(kpi.teamId as Id<"teams">);
+    if (!team) {
+      throw new Error("Team not found");
+    }
+
+    // Check if user is member of team
+    const member = team.members.find(m => m.userId === identity.subject);
+    if (!member) {
+      throw new Error("Not authorized");
+    }
+
+    // Update KPI
+    await ctx.db.patch(args.kpiId as Id<"kpis">, {
+      currentValue: args.currentValue,
+      updatedAt: new Date().toISOString(),
+      updatedBy: identity.subject,
+    });
+
+    return { success: true };
   },
 });

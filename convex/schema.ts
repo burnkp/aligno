@@ -6,46 +6,36 @@ export default defineSchema({
     name: v.string(),
     description: v.optional(v.string()),
     createdBy: v.string(),
-    members: v.array(
-      v.object({
-        userId: v.string(),
-        role: v.union(v.literal("admin"), v.literal("leader"), v.literal("member")),
-        email: v.string(),
-        name: v.string(),
-      })
-    ),
-  }),
-  
+    members: v.array(v.object({
+      userId: v.string(),
+      role: v.union(v.literal("admin"), v.literal("leader"), v.literal("member")),
+      email: v.string(),
+      name: v.string(),
+    })),
+  }).index("by_member", ["members"]),
+
   invitations: defineTable({
-    teamId: v.string(),
     email: v.string(),
     name: v.string(),
-    role: v.union(v.literal("admin"), v.literal("leader"), v.literal("member")),
+    teamId: v.id("teams"),
+    role: v.union(v.literal("leader"), v.literal("member")),
     token: v.string(),
     status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("expired")),
     expiresAt: v.string(),
+    createdBy: v.optional(v.string()),
+    createdAt: v.optional(v.string()),
+    acceptedAt: v.optional(v.string()),
   }).index("by_token", ["token"]),
 
   strategicObjectives: defineTable({
     title: v.string(),
     description: v.string(),
+    teamId: v.id("teams"),
     progress: v.number(),
-    teamId: v.string(),
-    createdBy: v.string(),
     startDate: v.string(),
     endDate: v.string(),
-  }),
-
-  operationalKeyResults: defineTable({
-    title: v.string(),
-    description: v.string(),
-    progress: v.number(),
-    strategicObjectiveId: v.id("strategicObjectives"),
-    teamId: v.string(),
     createdBy: v.string(),
-    startDate: v.string(),
-    endDate: v.string(),
-  }),
+  }).index("by_team", ["teamId"]),
 
   kpis: defineTable({
     title: v.string(),
@@ -55,17 +45,24 @@ export default defineSchema({
     progress: v.number(),
     operationalKeyResultId: v.id("operationalKeyResults"),
     assignedTo: v.string(),
-    teamId: v.string(),
-    createdBy: v.string(),
+    teamId: v.id("teams"),
     startDate: v.string(),
     endDate: v.string(),
-  }),
+    createdBy: v.string(),
+    updatedAt: v.optional(v.string()),
+    updatedBy: v.optional(v.string()),
+  })
+  .index("by_team", ["teamId"])
+  .index("by_assigned", ["assignedTo"]),
 
-  users: defineTable({
-    userId: v.string(),
-    name: v.string(),
-    email: v.string(),
-    role: v.union(v.literal("admin"), v.literal("leader"), v.literal("member")),
-    teamIds: v.array(v.string()),
-  }).index("by_userId", ["userId"]),
+  operationalKeyResults: defineTable({
+    title: v.string(),
+    description: v.string(),
+    strategicObjectiveId: v.id("strategicObjectives"),
+    teamId: v.id("teams"),
+    progress: v.float64(),
+    startDate: v.string(),
+    endDate: v.string(),
+    createdBy: v.string(),
+  }).index("by_team", ["teamId"]),
 });

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, UserPlus } from "lucide-react";
 import { InviteMemberModal } from "./invite-member-modal";
+import { useUser } from "@clerk/nextjs";
 
 interface TeamCardProps {
   team: {
@@ -15,53 +16,59 @@ interface TeamCardProps {
       name: string;
       role: string;
       userId: string;
+      email: string;
     }>;
   };
-  currentUserId: string;
 }
 
-export function TeamCard({ team, currentUserId }: TeamCardProps) {
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  
-  const currentUserRole = team.members.find(
-    member => member.userId === currentUserId
-  )?.role;
+export function TeamCard({ team }: TeamCardProps) {
+  const { user } = useUser();
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
-  const canInviteMembers = currentUserRole === "admin" || currentUserRole === "leader";
+  // Check if current user is admin or leader
+  const currentMember = team.members.find(m => m.userId === user?.id);
+  const canInviteMembers = currentMember?.role === "admin" || currentMember?.role === "leader";
 
   return (
     <>
-      <Card className="hover:shadow-lg transition">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-xl font-bold">{team.name}</CardTitle>
-          {canInviteMembers && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsInviteModalOpen(true)}
-            >
-              <UserPlus className="h-5 w-5" />
-            </Button>
-          )}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>{team.name}</span>
+            {canInviteMembers && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowInviteModal(true)}
+                className="flex items-center gap-2"
+              >
+                <UserPlus className="h-4 w-4" />
+                Add Member
+              </Button>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {team.description && (
-            <p className="text-sm text-muted-foreground mb-4">
-              {team.description}
-            </p>
-          )}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Members</span>
-              <span className="font-medium">{team.members.length}</span>
+          <p className="text-sm text-muted-foreground mb-4">
+            {team.description || "No description provided"}
+          </p>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                Members ({team.members.length})
+              </span>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {team.members.map((member, index) => (
+            <div className="space-y-2">
+              {team.members.map((member) => (
                 <div
-                  key={index}
-                  className="text-xs bg-secondary px-2 py-1 rounded-full"
+                  key={member.userId}
+                  className="flex items-center justify-between text-sm"
                 >
-                  {member.name} ({member.role})
+                  <span>{member.name}</span>
+                  <span className="text-muted-foreground capitalize">
+                    {member.role}
+                  </span>
                 </div>
               ))}
             </div>
@@ -70,8 +77,8 @@ export function TeamCard({ team, currentUserId }: TeamCardProps) {
       </Card>
 
       <InviteMemberModal
-        isOpen={isInviteModalOpen}
-        onClose={() => setIsInviteModalOpen(false)}
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
         teamId={team._id}
       />
     </>

@@ -1,26 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -28,15 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-
-const formSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  role: z.enum(["admin", "leader", "member"]),
-});
 
 interface InviteMemberModalProps {
   isOpen: boolean;
@@ -46,35 +29,36 @@ interface InviteMemberModalProps {
 
 export function InviteMemberModal({ isOpen, onClose, teamId }: InviteMemberModalProps) {
   const { toast } = useToast();
-  const inviteMember = useMutation(api.teams.inviteMember);
   const [isLoading, setIsLoading] = useState(false);
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      name: "",
-      role: "member",
-    },
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    role: "member" as "leader" | "member",
   });
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const createInvitation = useMutation(api.invitations.create);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
     try {
-      setIsLoading(true);
-      await inviteMember({
+      await createInvitation({
         teamId,
-        ...values,
+        ...formData,
       });
+
       toast({
-        title: "Success",
-        description: "Team member invited successfully",
+        title: "Invitation Sent",
+        description: `An invitation has been sent to ${formData.email}`,
       });
+
       onClose();
-      form.reset();
+      setFormData({ name: "", email: "", role: "member" });
     } catch (error) {
       toast({
         title: "Error",
-        description: "Something went wrong",
+        description: "Failed to send invitation",
         variant: "destructive",
       });
     } finally {
@@ -88,66 +72,54 @@ export function InviteMemberModal({ isOpen, onClose, teamId }: InviteMemberModal
         <DialogHeader>
           <DialogTitle>Invite Team Member</DialogTitle>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter email address" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Enter member's name"
+              required
             />
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter full name" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="Enter member's email"
+              required
             />
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select role" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="member">Team Member</SelectItem>
-                      <SelectItem value="leader">Team Leader</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="flex justify-end space-x-3">
-              <Button variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                Send Invitation
-              </Button>
-            </div>
-          </form>
-        </Form>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="role">Role</Label>
+            <Select
+              value={formData.role}
+              onValueChange={(value: "leader" | "member") =>
+                setFormData({ ...formData, role: value })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="leader">Team Leader</SelectItem>
+                <SelectItem value="member">Team Member</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Sending..." : "Send Invitation"}
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

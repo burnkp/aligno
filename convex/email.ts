@@ -1,5 +1,9 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
+import { Resend } from 'resend';
+import { getInvitationEmailHtml } from '../lib/email-templates';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export const sendInvitation = action({
   args: {
@@ -9,25 +13,30 @@ export const sendInvitation = action({
     invitationToken: v.string(),
   },
   handler: async (ctx, args) => {
-    // In a production environment, you would integrate with an email service
-    // For development, we'll log the invitation details
-    console.log(`
-      Invitation Email:
-      To: ${args.email}
-      Subject: You've been invited to join ${args.teamName} on Aligno
-      
-      Hi ${args.name},
-      
-      You've been invited to join ${args.teamName} on Aligno. Click the link below to accept the invitation:
-      
-      ${process.env.NEXT_PUBLIC_APP_URL}/invite/${args.invitationToken}
-      
-      This invitation will expire in 7 days.
-      
-      Best regards,
-      The Aligno Team
-    `);
+    const invitationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${args.invitationToken}`;
 
-    return { success: true };
+    try {
+      const data = await resend.emails.send({
+        from: 'Aligno <onboarding@aligno.app>',
+        to: args.email,
+        subject: `You've been invited to join ${args.teamName} on Aligno`,
+        html: getInvitationEmailHtml({
+          name: args.name,
+          teamName: args.teamName,
+          invitationUrl,
+        }),
+        tags: [
+          {
+            name: 'type',
+            value: 'team_invitation',
+          },
+        ],
+      });
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('Failed to send invitation email:', error);
+      throw new Error('Failed to send invitation email');
+    }
   },
 });
