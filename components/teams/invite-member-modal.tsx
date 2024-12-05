@@ -36,29 +36,35 @@ export function InviteMemberModal({ isOpen, onClose, teamId }: InviteMemberModal
     role: "member" as "leader" | "member",
   });
 
-  const createInvitation = useMutation(api.invitations.create);
+  const inviteMember = useMutation(api.teams.inviteMember);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      await createInvitation({
+      console.log("Submitting invitation for:", formData);
+      const result = await inviteMember({
         teamId,
         ...formData,
       });
+      console.log("Invitation result:", result);
 
-      toast({
-        title: "Invitation Sent",
-        description: `An invitation has been sent to ${formData.email}`,
-      });
-
-      onClose();
-      setFormData({ name: "", email: "", role: "member" });
+      if (result.success) {
+        toast({
+          title: "Invitation sent",
+          description: "Team member will receive an email invitation",
+        });
+        onClose();
+        setFormData({ name: "", email: "", role: "member" });
+      } else {
+        throw new Error("Failed to send invitation");
+      }
     } catch (error) {
+      console.error("Invitation error:", error);
       toast({
         title: "Error",
-        description: "Failed to send invitation",
+        description: error instanceof Error ? error.message : "Failed to send invitation",
         variant: "destructive",
       });
     } finally {

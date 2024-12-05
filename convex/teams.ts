@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query, action } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 
 export const createTeam = mutation({
   args: {
@@ -52,37 +53,62 @@ export const inviteMember = mutation({
     role: v.union(v.literal("leader"), v.literal("member")),
   },
   handler: async (ctx, args) => {
+    console.log("Starting inviteMember mutation with args:", args);
+    
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
     }
 
-    // Check if user has permission to invite members
     const team = await ctx.db.get(args.teamId as Id<"teams">);
     if (!team) {
       throw new Error("Team not found");
     }
 
-    // Store the invitation in the database
-    await ctx.db.insert("invitations", {
-      teamId: args.teamId as Id<"teams">,
-      email: args.email,
-      name: args.name,
-      role: args.role,
-      token: Math.random().toString(36).substring(2),
-      status: "pending",
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    });
+    console.log("Found team:", team);
+    const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+    let invitationId: Id<"invitations"> | null = null;
 
-    // Send invitation email
-    await ctx.scheduler.runAfter(0, internal.email.sendInvitation, {
-      email: args.email,
-      name: args.name,
-      teamName: team.name,
-      invitationToken: Math.random().toString(36).substring(2),
-    });
+    try {
+      // Store the invitation in the database
+      console.log("Creating invitation record...");
+      invitationId = await ctx.db.insert("invitations", {
+        teamId: args.teamId as Id<"teams">,
+        email: args.email,
+        name: args.name,
+        role: args.role,
+        token,
+        status: "pending",
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        createdBy: identity.subject,
+        createdAt: new Date().toISOString(),
+      });
+      console.log("Invitation created with ID:", invitationId);
 
-    return { success: true };
+      // Send the email
+      console.log("Sending invitation email...");
+      const emailResult = await ctx.scheduler.runAfter(0, internal.email.sendInvitation, {
+        email: args.email,
+        name: args.name,
+        teamId: args.teamId,
+        teamName: team.name,
+        role: args.role,
+        invitationToken: token,
+      });
+      console.log("Email result:", emailResult);
+
+      return { success: true };
+    } catch (error) {
+      console.error("Failed to process invitation:", error);
+      
+      // If we created an invitation but failed to send email, delete it
+      if (invitationId) {
+        console.log("Deleting failed invitation:", invitationId);
+        await ctx.db.delete(invitationId);
+      }
+
+      throw error;
+    }
   },
 });
 

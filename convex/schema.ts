@@ -65,4 +65,14 @@ export default defineSchema({
     endDate: v.string(),
     createdBy: v.string(),
   }).index("by_team", ["teamId"]),
+
+  emailLogs: defineTable({
+    email: v.string(),
+    teamId: v.string(),
+    status: v.string(),
+    error: v.optional(v.string()),
+    details: v.optional(v.string()),
+    timestamp: v.string(),
+    environment: v.string(),
+  }).index("by_email", ["email"]),
 });
