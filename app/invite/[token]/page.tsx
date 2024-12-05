@@ -1,55 +1,70 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useSignIn, useUser } from "@clerk/nextjs";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { SignInButton, useAuth, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
 
-export default function InvitationPage() {
-  const params = useParams();
+export default function InvitationPage({ params }: { params: { token: string } }) {
+  const { isSignedIn, user } = useUser();
+  const { signIn } = useSignIn();
   const router = useRouter();
   const { toast } = useToast();
-  const { isLoaded: isAuthLoaded, isSignedIn } = useAuth();
-  const { user } = useUser();
   const [isAccepting, setIsAccepting] = useState(false);
-  
-  const invitation = useQuery(api.invitations.getByToken, {
-    token: params.token as string,
+
+  const invitation = useQuery(api.invitations.getByToken, { 
+    token: params.token 
   });
+
   const acceptInvitation = useMutation(api.teams.acceptInvitation);
 
-  useEffect(() => {
-    if (invitation === undefined) return;
-    
-    if (!invitation) {
-      toast({
-        title: "Invalid Invitation",
-        description: "This invitation link is invalid or has expired.",
-        variant: "destructive",
-      });
-    }
-  }, [invitation, toast]);
-
   const handleAcceptInvitation = async () => {
-    if (!isSignedIn || !user || !invitation) return;
+    if (!isSignedIn || !user) {
+      // Store the invitation token in sessionStorage
+      sessionStorage.setItem('pendingInvitationToken', params.token);
+      // Redirect to Clerk sign-in
+      signIn?.create({
+        strategy: "oauth_google",
+        redirectUrl: window.location.href,
+      });
+      return;
+    }
 
     try {
       setIsAccepting(true);
-      await acceptInvitation({
-        token: params.token as string,
+
+      if (!invitation || invitation.status !== "pending") {
+        toast({
+          title: "Invalid Invitation",
+          description: "This invitation is no longer valid.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const result = await acceptInvitation({ 
+        token: params.token,
+        userId: user.id,
+        userEmail: user.emailAddresses[0].emailAddress
       });
       
-      toast({
-        title: "Success",
-        description: "You have successfully joined the team",
-      });
-      router.push("/dashboard");
+      if (result.success) {
+        toast({
+          title: "Welcome!",
+          description: "You've successfully joined the team.",
+        });
+        
+        // Clear any stored invitation token
+        sessionStorage.removeItem('pendingInvitationToken');
+        
+        // Redirect to the team profile
+        router.push(`/dashboard/teams/${invitation.teamId}/profile`);
+      }
     } catch (error) {
+      console.error("Error accepting invitation:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to accept invitation",
@@ -60,63 +75,71 @@ export default function InvitationPage() {
     }
   };
 
-  if (!isAuthLoaded || invitation === undefined) {
+  // Effect to handle post-authentication acceptance
+  useEffect(() => {
+    const pendingToken = sessionStorage.getItem('pendingInvitationToken');
+    if (isSignedIn && user && pendingToken === params.token) {
+      handleAcceptInvitation();
+    }
+  }, [isSignedIn, user]);
+
+  if (!invitation) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
+  if (invitation.status === "expired") {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <div className="max-w-md w-full space-y-4 text-center">
+          <h2 className="text-2xl font-bold text-red-600">Invitation Expired</h2>
+          <p className="text-gray-600">
+            This invitation has expired. Please request a new invitation.
+          </p>
+        </div>
       </div>
     );
   }
 
-  if (!invitation) {
+  if (invitation.status === "accepted") {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-[400px]">
-          <CardHeader>
-            <CardTitle className="text-destructive">Invalid Invitation</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>This invitation link is invalid or has expired.</p>
-          </CardContent>
-        </Card>
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <div className="max-w-md w-full space-y-4 text-center">
+          <h2 className="text-2xl font-bold text-green-600">Already Accepted</h2>
+          <p className="text-gray-600">
+            This invitation has already been accepted.
+          </p>
+          <Button onClick={() => router.push("/dashboard")}>
+            Go to Dashboard
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-      <Card className="w-[400px]">
-        <CardHeader>
-          <CardTitle>Team Invitation</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-4">
-            You have been invited to join {invitation.teamName} as a {invitation.role}.
+    <div className="flex flex-col items-center justify-center min-h-screen p-4">
+      <div className="max-w-md w-full space-y-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold">Join Team</h2>
+          <p className="mt-2 text-gray-600">
+            You've been invited to join as a {invitation.role}
           </p>
-          {!isSignedIn ? (
-            <SignInButton mode="modal" redirectUrl={`/invite/${params.token}`}>
-              <Button className="w-full">
-                Sign in to accept invitation
-              </Button>
-            </SignInButton>
+        </div>
+
+        <Button
+          className="w-full"
+          onClick={handleAcceptInvitation}
+          disabled={isAccepting}
+        >
+          {isAccepting ? (
+            "Accepting..."
+          ) : isSignedIn ? (
+            "Accept Invitation"
           ) : (
-            <Button
-              className="w-full"
-              onClick={handleAcceptInvitation}
-              disabled={isAccepting}
-            >
-              {isAccepting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Accepting...
-                </>
-              ) : (
-                "Accept Invitation"
-              )}
-            </Button>
+            "Sign in to Accept"
           )}
-        </CardContent>
-      </Card>
+        </Button>
+      </div>
     </div>
   );
 } 

@@ -115,6 +115,8 @@ export const inviteMember = mutation({
 export const acceptInvitation = mutation({
   args: {
     token: v.string(),
+    userId: v.string(),
+    userEmail: v.string(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -122,45 +124,73 @@ export const acceptInvitation = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Find and validate invitation
+    // Get the invitation
     const invitation = await ctx.db
       .query("invitations")
-      .filter((q) => q.eq(q.field("token"), args.token))
-      .unique();
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .first();
 
-    if (!invitation || invitation.status !== "pending" || new Date(invitation.expiresAt) < new Date()) {
-      throw new Error("Invalid or expired invitation");
+    if (!invitation) {
+      throw new Error("Invalid invitation token");
     }
 
-    if (invitation.email !== identity.email) {
-      throw new Error("Email mismatch");
+    if (invitation.status !== "pending") {
+      throw new Error("Invitation is no longer valid");
     }
 
-    // Update team members
-    const team = await ctx.db
-      .query("teams")
-      .filter((q) => q.eq(q.field("_id"), invitation.teamId))
-      .unique();
+    if (new Date(invitation.expiresAt) < new Date()) {
+      throw new Error("Invitation has expired");
+    }
 
+    // Get the team
+    const team = await ctx.db.get(invitation.teamId);
     if (!team) {
       throw new Error("Team not found");
     }
 
-    await ctx.db.patch(team._id, {
-      members: [...team.members, {
-        userId: identity.subject,
-        role: invitation.role,
-        email: identity.email!,
-        name: identity.name!,
-      }],
+    // Check if user is already a member of this specific team
+    const existingMembership = team.members.find(member => 
+      member.userId === args.userId && 
+      member.email === args.userEmail
+    );
+
+    if (existingMembership) {
+      // If they're already a member of this team, redirect them
+      return {
+        success: true,
+        teamId: invitation.teamId,
+        alreadyMember: true
+      };
+    }
+
+    const now = new Date().toISOString();
+
+    // Add user to team members
+    await ctx.db.patch(invitation.teamId, {
+      members: [
+        ...team.members,
+        {
+          userId: args.userId,
+          role: invitation.role,
+          email: args.userEmail,
+          name: identity.name || invitation.name,
+          joinedAt: now,
+        },
+      ],
     });
 
-    // Mark invitation as accepted
+    // Update invitation status
     await ctx.db.patch(invitation._id, {
       status: "accepted",
+      acceptedAt: now,
+      acceptedBy: args.userId,
     });
 
-    return { success: true };
+    return {
+      success: true,
+      teamId: invitation.teamId,
+      alreadyMember: false
+    };
   },
 });
 
@@ -235,5 +265,78 @@ export const getUserRole = query({
     if (!member) return null;
 
     return member.role;
+  },
+});
+
+// Add this query to fetch team member's data
+export const getTeamMemberData = query({
+  args: { teamId: v.id("teams") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    // Get team
+    const team = await ctx.db.get(args.teamId);
+    if (!team) throw new Error("Team not found");
+
+    // Verify user is a team member
+    const isMember = team.members.some(m => m.userId === identity.subject);
+    if (!isMember) throw new Error("Not authorized");
+
+    // Get team KPIs and OKRs
+    const kpis = await ctx.db
+      .query("kpis")
+      .withIndex("by_team", q => q.eq("teamId", args.teamId))
+      .collect();
+
+    const okrs = await ctx.db
+      .query("objectives")
+      .withIndex("by_team", q => q.eq("teamId", args.teamId))
+      .collect();
+
+    return {
+      team,
+      kpis,
+      okrs,
+      userRole: team.members.find(m => m.userId === identity.subject)?.role
+    };
+  },
+});
+
+export const getTeam = query({
+  args: { teamId: v.id("teams") },
+  handler: async (ctx, args) => {
+    const team = await ctx.db.get(args.teamId);
+    if (!team) {
+      throw new Error("Team not found");
+    }
+    return team;
+  },
+});
+
+export const getTeamWithData = query({
+  args: { teamId: v.id("teams") },
+  handler: async (ctx, args) => {
+    const team = await ctx.db.get(args.teamId);
+    if (!team) {
+      throw new Error("Team not found");
+    }
+
+    // Get team's objectives and KPIs
+    const objectives = await ctx.db
+      .query("strategicObjectives")
+      .filter(q => q.eq(q.field("teamId"), args.teamId))
+      .collect();
+
+    const kpis = await ctx.db
+      .query("kpis")
+      .filter(q => q.eq(q.field("teamId"), args.teamId))
+      .collect();
+
+    return {
+      team,
+      objectives,
+      kpis,
+    };
   },
 });

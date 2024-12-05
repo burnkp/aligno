@@ -24,6 +24,7 @@ import type * as strategicObjectives from "../strategicObjectives.js";
 import type * as teams from "../teams.js";
 import type * as templates from "../templates.js";
 import type * as test from "../test.js";
+import type * as utils from "../utils.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   teams: typeof teams;
   templates: typeof templates;
   test: typeof test;
+  utils: typeof utils;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { generateToken } from "./utils";
 
 // Get invitation by token
 export const getByToken = query({
@@ -15,20 +16,42 @@ export const getByToken = query({
       return null;
     }
 
-    // Get team info
-    const team = await ctx.db.get(invitation.teamId as Id<"teams">);
-    
-    return {
-      ...invitation,
-      teamName: team?.name || "Unknown Team",
-    };
+    // Check if expired
+    if (new Date(invitation.expiresAt) < new Date()) {
+      return { ...invitation, status: "expired" };
+    }
+
+    return invitation;
+  },
+});
+
+// Update expired status
+export const updateExpiredStatus = mutation({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const invitation = await ctx.db
+      .query("invitations")
+      .withIndex("by_token", (q) => q.eq("token", args.token))
+      .first();
+
+    if (!invitation) {
+      return null;
+    }
+
+    if (new Date(invitation.expiresAt) < new Date()) {
+      await ctx.db.patch(invitation._id, {
+        status: "expired"
+      });
+    }
+
+    return invitation;
   },
 });
 
 // Create new invitation
-export const create = mutation({
+export const createInvitation = mutation({
   args: {
-    teamId: v.string(),
+    teamId: v.id("teams"),
     email: v.string(),
     name: v.string(),
     role: v.union(v.literal("leader"), v.literal("member")),
@@ -39,32 +62,19 @@ export const create = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Check if user has permission to invite members
-    const team = await ctx.db
-      .query("teams")
-      .filter((q) => q.eq(q.field("_id"), args.teamId))
-      .unique();
+    const token = generateToken();
+    const now = new Date().toISOString();
 
-    if (!team) {
-      throw new Error("Team not found");
-    }
-
-    // Check if inviter is admin or leader
-    const currentUser = team.members.find(m => m.userId === identity.subject);
-    if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "leader")) {
-      throw new Error("Not authorized to invite members");
-    }
-
-    // Generate a unique invitation token
-    const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
-
-    // Store the invitation
+    // Store the invitation with all required fields
     const invitation = await ctx.db.insert("invitations", {
-      ...args,
+      teamId: args.teamId,
+      email: args.email,
+      name: args.name,
+      role: args.role,
       token,
       status: "pending",
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
-      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      createdAt: now,
       createdBy: identity.subject,
     });
 
@@ -84,7 +94,6 @@ export const accept = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Get invitation
     const invitation = await ctx.db
       .query("invitations")
       .withIndex("by_token", (q) => q.eq("token", args.token))
@@ -102,34 +111,37 @@ export const accept = mutation({
       throw new Error("Invitation has expired");
     }
 
-    // Update team members
-    const team = await ctx.db.get(invitation.teamId as Id<"teams">);
+    const team = await ctx.db.get(invitation.teamId);
     if (!team) {
       throw new Error("Team not found");
     }
 
-    // Check if user is already a member
     const existingMember = team.members.find(m => m.userId === args.userId);
     if (existingMember) {
       throw new Error("You are already a member of this team");
     }
 
-    // Add member to team
-    await ctx.db.patch(invitation.teamId as Id<"teams">, {
+    const now = new Date().toISOString();
+
+    // Add member to team with all required fields
+    await ctx.db.patch(invitation.teamId, {
       members: [
         ...team.members,
         {
           userId: args.userId,
-          role: invitation.role,
           email: invitation.email,
           name: invitation.name,
+          role: invitation.role,
+          joinedAt: now,
         },
       ],
     });
 
-    // Mark invitation as accepted
+    // Update invitation status with all required fields
     await ctx.db.patch(invitation._id, {
       status: "accepted",
+      acceptedAt: now,
+      acceptedBy: args.userId,
     });
 
     return { success: true };

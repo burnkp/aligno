@@ -6,25 +6,29 @@ export default defineSchema({
     name: v.string(),
     description: v.optional(v.string()),
     createdBy: v.string(),
-    members: v.array(v.object({
-      userId: v.string(),
-      role: v.union(v.literal("admin"), v.literal("leader"), v.literal("member")),
-      email: v.string(),
-      name: v.string(),
-    })),
+    members: v.array(
+      v.object({
+        userId: v.string(),
+        email: v.string(),
+        name: v.string(),
+        role: v.union(v.literal("admin"), v.literal("leader"), v.literal("member")),
+        joinedAt: v.optional(v.string())
+      })
+    )
   }).index("by_member", ["members"]),
 
   invitations: defineTable({
+    teamId: v.id("teams"),
     email: v.string(),
     name: v.string(),
-    teamId: v.id("teams"),
     role: v.union(v.literal("leader"), v.literal("member")),
     token: v.string(),
     status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("expired")),
     expiresAt: v.string(),
-    createdBy: v.optional(v.string()),
     createdAt: v.optional(v.string()),
+    createdBy: v.optional(v.string()),
     acceptedAt: v.optional(v.string()),
+    acceptedBy: v.optional(v.string())
   }).index("by_token", ["token"]),
 
   strategicObjectives: defineTable({
@@ -34,7 +38,7 @@ export default defineSchema({
     progress: v.number(),
     startDate: v.string(),
     endDate: v.string(),
-    createdBy: v.string(),
+    createdBy: v.string()
   }).index("by_team", ["teamId"]),
 
   kpis: defineTable({
@@ -50,10 +54,10 @@ export default defineSchema({
     endDate: v.string(),
     createdBy: v.string(),
     updatedAt: v.optional(v.string()),
-    updatedBy: v.optional(v.string()),
+    updatedBy: v.optional(v.string())
   })
-  .index("by_team", ["teamId"])
-  .index("by_assigned", ["assignedTo"]),
+    .index("by_team", ["teamId"])
+    .index("by_assigned", ["assignedTo"]),
 
   operationalKeyResults: defineTable({
     title: v.string(),
@@ -63,7 +67,7 @@ export default defineSchema({
     progress: v.float64(),
     startDate: v.string(),
     endDate: v.string(),
-    createdBy: v.string(),
+    createdBy: v.string()
   }).index("by_team", ["teamId"]),
 
   emailLogs: defineTable({
@@ -73,6 +77,6 @@ export default defineSchema({
     error: v.optional(v.string()),
     details: v.optional(v.string()),
     timestamp: v.string(),
-    environment: v.string(),
-  }).index("by_email", ["email"]),
+    environment: v.string()
+  }).index("by_email", ["email"])
 });

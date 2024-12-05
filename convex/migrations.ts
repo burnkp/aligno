@@ -16,4 +16,25 @@ export const migrateKPIs = mutation({
     
     return { success: true, migratedCount: kpis.length };
   },
+});
+
+export const migrateTeamMembers = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const teams = await ctx.db.query("teams").collect();
+    const now = new Date().toISOString();
+
+    for (const team of teams) {
+      const updatedMembers = team.members.map(member => ({
+        ...member,
+        joinedAt: member.joinedAt || now
+      }));
+
+      await ctx.db.patch(team._id, {
+        members: updatedMembers
+      });
+    }
+
+    return { success: true, message: "Migration completed" };
+  }
 }); 
