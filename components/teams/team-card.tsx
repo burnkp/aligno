@@ -1,86 +1,108 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Users, UserPlus } from "lucide-react";
-import { InviteMemberModal } from "./invite-member-modal";
+import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { InviteMemberModal } from "./invite-member-modal";
+import { Id } from "@/convex/_generated/dataModel";
+import { TeamMember } from "@/types/teams";
+import { getUserRole, canInviteMembers } from "@/utils/permissions";
 
 interface TeamCardProps {
-  team: {
-    _id: string;
-    name: string;
-    description?: string;
-    members: Array<{
-      name: string;
-      role: string;
-      userId: string;
-      email: string;
-    }>;
-  };
+  id: Id<"teams">;
+  name: string;
+  description?: string;
+  members: TeamMember[];
+  isMember: boolean;
 }
 
-export function TeamCard({ team }: TeamCardProps) {
+export function TeamCard({
+  id,
+  name,
+  description,
+  members,
+  isMember,
+}: TeamCardProps) {
+  const router = useRouter();
   const { user } = useUser();
   const [showInviteModal, setShowInviteModal] = useState(false);
 
-  // Check if current user is admin or leader
-  const currentMember = team.members.find(m => m.userId === user?.id);
-  const canInviteMembers = currentMember?.role === "admin" || currentMember?.role === "leader";
+  if (!user) return null;
+
+  const userRole = isMember ? getUserRole({ _id: id, members } as any, user.id) : null;
+  const canInvite = userRole && canInviteMembers(userRole);
+
+  const handleViewTeam = () => {
+    router.push(`/dashboard/teams/${id}/profile`);
+  };
+
+  const handleInvite = () => {
+    setShowInviteModal(true);
+  };
 
   return (
     <>
-      <Card>
+      <Card className="hover:shadow-md transition-shadow">
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>{team.name}</span>
-            {canInviteMembers && (
+          <CardTitle className="flex justify-between items-center">
+            <span>{name}</span>
+            {isMember && canInvite && (
               <Button
-                size="sm"
                 variant="outline"
-                onClick={() => setShowInviteModal(true)}
-                className="flex items-center gap-2"
+                size="sm"
+                onClick={handleInvite}
               >
-                <UserPlus className="h-4 w-4" />
-                Add Member
+                Invite
               </Button>
             )}
           </CardTitle>
+          {description && (
+            <CardDescription>{description}</CardDescription>
+          )}
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            {team.description || "No description provided"}
-          </p>
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground">
-                Members ({team.members.length})
-              </span>
-            </div>
-            <div className="space-y-2">
-              {team.members.map((member) => (
-                <div
-                  key={member.userId}
-                  className="flex items-center justify-between text-sm"
-                >
-                  <span>{member.name}</span>
-                  <span className="text-muted-foreground capitalize">
-                    {member.role}
-                  </span>
-                </div>
+          <div className="flex flex-col space-y-4">
+            <div className="flex -space-x-2">
+              {members.slice(0, 5).map((member, index) => (
+                <Avatar key={member.userId} className="border-2 border-white">
+                  <AvatarImage
+                    src={`https://avatar.vercel.sh/${member.email}`}
+                    alt={member.name}
+                  />
+                  <AvatarFallback>
+                    {member.name.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
               ))}
+              {members.length > 5 && (
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 border-2 border-white">
+                  <span className="text-xs">+{members.length - 5}</span>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
+        <CardFooter>
+          <Button
+            className="w-full"
+            variant={isMember ? "default" : "secondary"}
+            onClick={handleViewTeam}
+          >
+            {isMember ? "View Team" : "View Invitation"}
+          </Button>
+        </CardFooter>
       </Card>
 
-      <InviteMemberModal
-        isOpen={showInviteModal}
-        onClose={() => setShowInviteModal(false)}
-        teamId={team._id}
-      />
+      {showInviteModal && (
+        <InviteMemberModal
+          isOpen={showInviteModal}
+          onClose={() => setShowInviteModal(false)}
+          teamId={id}
+        />
+      )}
     </>
   );
 }

@@ -1,9 +1,115 @@
 import { v } from "convex/values";
-import { mutation, query, action } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 
-export const createTeam = mutation({
+// List teams that the user has access to
+export const list = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Get teams where user is a member
+    const memberTeams = await ctx.db
+      .query("teams")
+      .filter(q =>
+        q.or(
+          // User is the creator (admin)
+          q.eq(q.field("createdBy"), identity.subject),
+          // Or user is in members array
+          q.filter(
+            q.field("members"),
+            q.eq(q.field("userId"), identity.subject)
+          )
+        )
+      )
+      .collect();
+
+    // Get teams where user has pending invitations
+    const pendingInvitations = await ctx.db
+      .query("invitations")
+      .filter(q => 
+        q.and(
+          q.eq(q.field("email"), identity.email!),
+          q.eq(q.field("status"), "pending")
+        )
+      )
+      .collect();
+
+    // Get the teams for pending invitations
+    const invitedTeamIds = pendingInvitations.map(inv => inv.teamId);
+    const invitedTeams = await Promise.all(
+      invitedTeamIds.map(id => ctx.db.get(id))
+    );
+
+    return {
+      memberTeams,
+      invitedTeams: invitedTeams.filter(Boolean)
+    };
+  },
+});
+
+// Get a specific team with all its data
+export const getTeamWithData = query({
+  args: { teamId: v.id("teams") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Get the team
+    const team = await ctx.db.get(args.teamId);
+    if (!team) {
+      throw new Error("Team not found");
+    }
+
+    // Check if user is a member or creator
+    const isMember = team.members.some(m => m.userId === identity.subject) || 
+                    team.createdBy === identity.subject;
+    
+    // Check if user has a pending invitation
+    const hasPendingInvitation = await ctx.db
+      .query("invitations")
+      .filter(q => 
+        q.and(
+          q.eq(q.field("teamId"), args.teamId),
+          q.eq(q.field("email"), identity.email!),
+          q.eq(q.field("status"), "pending")
+        )
+      )
+      .first();
+
+    // If user is neither a member nor has a pending invitation, deny access
+    if (!isMember && !hasPendingInvitation) {
+      throw new Error("Access denied");
+    }
+
+    // Get team's objectives
+    const objectives = await ctx.db
+      .query("strategicObjectives")
+      .filter(q => q.eq(q.field("teamId"), args.teamId))
+      .collect();
+
+    // Get team's KPIs
+    const kpis = await ctx.db
+      .query("kpis")
+      .filter(q => q.eq(q.field("teamId"), args.teamId))
+      .collect();
+
+    return {
+      ...team,
+      objectives,
+      kpis,
+    };
+  },
+});
+
+// Create a new team
+export const create = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
@@ -14,24 +120,34 @@ export const createTeam = mutation({
       throw new Error("Not authenticated");
     }
 
-    const team = await ctx.db.insert("teams", {
+    const teamId = await ctx.db.insert("teams", {
       name: args.name,
       description: args.description,
       createdBy: identity.subject,
       members: [{
         userId: identity.subject,
-        role: "admin",
         email: identity.email!,
-        name: identity.name!,
+        name: identity.name || "Unknown",
+        role: "admin",
+        joinedAt: new Date().toISOString(),
       }],
+      visibility: "private",
     });
 
-    return team;
+    return teamId;
   },
 });
 
-export const getTeams = query({
-  handler: async (ctx) => {
+// Update team settings (admin only)
+export const update = mutation({
+  args: {
+    teamId: v.id("teams"),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    visibility: v.optional(v.union(v.literal("private"), v.literal("public"))),
+    allowedDomains: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
@@ -314,29 +430,11 @@ export const getTeam = query({
   },
 });
 
-export const getTeamWithData = query({
-  args: { teamId: v.id("teams") },
-  handler: async (ctx, args) => {
-    const team = await ctx.db.get(args.teamId);
-    if (!team) {
-      throw new Error("Team not found");
-    }
-
-    // Get team's objectives and KPIs
-    const objectives = await ctx.db
-      .query("strategicObjectives")
-      .filter(q => q.eq(q.field("teamId"), args.teamId))
-      .collect();
-
-    const kpis = await ctx.db
-      .query("kpis")
-      .filter(q => q.eq(q.field("teamId"), args.teamId))
-      .collect();
-
-    return {
-      team,
-      objectives,
-      kpis,
-    };
+// List all teams
+export const list = query({
+  args: {},
+  handler: async (ctx) => {
+    const teams = await ctx.db.query("teams").collect();
+    return teams;
   },
 });
