@@ -7,7 +7,7 @@ import { Team } from "@/types/teams";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function TeamsPage() {
-  const teamsData = useQuery(api.teams.list);
+  const teamsData = useQuery(api.teams.listUserTeams);
 
   // Loading state
   if (!teamsData) {
@@ -25,6 +25,11 @@ export default function TeamsPage() {
   const memberTeams = teamsData.memberTeams || [];
   const invitedTeams = (teamsData.invitedTeams || []).filter(Boolean) as Team[];
   const hasTeams = memberTeams.length > 0 || invitedTeams.length > 0;
+
+  console.log("Teams data:", {
+    memberTeams: memberTeams.map(t => ({ id: t._id, name: t.name })),
+    invitedTeams: invitedTeams.map(t => ({ id: t._id, name: t.name }))
+  });
 
   // No teams state
   if (!hasTeams) {

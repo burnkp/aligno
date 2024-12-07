@@ -3,8 +3,8 @@ import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 
-// List teams that the user has access to
-export const list = query({
+// Get all teams (used by dashboard)
+export const getTeams = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -12,25 +12,44 @@ export const list = query({
       throw new Error("Not authenticated");
     }
 
-    // Get teams where user is a member
-    const memberTeams = await ctx.db
+    // Get all teams where user is a member or creator
+    const teams = await ctx.db
       .query("teams")
-      .filter(q =>
-        q.or(
-          // User is the creator (admin)
-          q.eq(q.field("createdBy"), identity.subject),
-          // Or user is in members array
-          q.filter(
-            q.field("members"),
-            q.eq(q.field("userId"), identity.subject)
-          )
-        )
-      )
       .collect();
+
+    return teams.filter(team => 
+      team.createdBy === identity.subject || 
+      team.members.some(member => member.userId === identity.subject)
+    );
+  },
+});
+
+// List teams that the user has access to (used by teams page)
+export const listUserTeams = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Get all teams
+    const allTeams = await ctx.db.query("teams").collect();
+    
+    // Filter teams where user is either creator or member
+    const memberTeams = allTeams.filter(team => {
+      // Check if user is creator
+      if (team.createdBy === identity.subject) {
+        return true;
+      }
+      // Check if user is in members array
+      return team.members.some(member => member.userId === identity.subject);
+    });
 
     // Get teams where user has pending invitations
     const pendingInvitations = await ctx.db
       .query("invitations")
+      .withIndex("by_token")
       .filter(q => 
         q.and(
           q.eq(q.field("email"), identity.email!),
@@ -44,6 +63,13 @@ export const list = query({
     const invitedTeams = await Promise.all(
       invitedTeamIds.map(id => ctx.db.get(id))
     );
+
+    console.log("Found teams for user:", {
+      userId: identity.subject,
+      memberTeamsCount: memberTeams.length,
+      invitedTeamsCount: invitedTeams.length,
+      memberTeams: memberTeams.map(t => ({ id: t._id, name: t.name }))
+    });
 
     return {
       memberTeams,
@@ -74,6 +100,7 @@ export const getTeamWithData = query({
     // Check if user has a pending invitation
     const hasPendingInvitation = await ctx.db
       .query("invitations")
+      .withIndex("by_token")
       .filter(q => 
         q.and(
           q.eq(q.field("teamId"), args.teamId),
@@ -91,12 +118,14 @@ export const getTeamWithData = query({
     // Get team's objectives
     const objectives = await ctx.db
       .query("strategicObjectives")
+      .withIndex("by_team")
       .filter(q => q.eq(q.field("teamId"), args.teamId))
       .collect();
 
     // Get team's KPIs
     const kpis = await ctx.db
       .query("kpis")
+      .withIndex("by_team")
       .filter(q => q.eq(q.field("teamId"), args.teamId))
       .collect();
 
@@ -131,65 +160,46 @@ export const create = mutation({
         role: "admin",
         joinedAt: new Date().toISOString(),
       }],
-      visibility: "private",
     });
 
     return teamId;
   },
 });
 
-// Update team settings (admin only)
-export const update = mutation({
-  args: {
-    teamId: v.id("teams"),
-    name: v.optional(v.string()),
-    description: v.optional(v.string()),
-    visibility: v.optional(v.union(v.literal("private"), v.literal("public"))),
-    allowedDomains: v.optional(v.array(v.string())),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const teams = await ctx.db
-      .query("teams")
-      .collect();
-
-    return teams;
-  },
-});
-
+// Invite a member to the team
 export const inviteMember = mutation({
   args: {
-    teamId: v.string(),
+    teamId: v.id("teams"),
     email: v.string(),
     name: v.string(),
     role: v.union(v.literal("leader"), v.literal("member")),
   },
   handler: async (ctx, args) => {
-    console.log("Starting inviteMember mutation with args:", args);
-    
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
     }
 
-    const team = await ctx.db.get(args.teamId as Id<"teams">);
+    // Get the team
+    const team = await ctx.db.get(args.teamId);
     if (!team) {
       throw new Error("Team not found");
     }
 
-    console.log("Found team:", team);
+    // Check if user is admin or leader
+    const member = team.members.find(m => m.userId === identity.subject);
+    if (!member || (member.role !== "admin" && member.role !== "leader")) {
+      throw new Error("Not authorized to invite members");
+    }
+
+    // Generate invitation token
     const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
     let invitationId: Id<"invitations"> | null = null;
 
     try {
-      // Store the invitation in the database
-      console.log("Creating invitation record...");
+      // Store invitation
       invitationId = await ctx.db.insert("invitations", {
-        teamId: args.teamId as Id<"teams">,
+        teamId: args.teamId,
         email: args.email,
         name: args.name,
         role: args.role,
@@ -199,30 +209,23 @@ export const inviteMember = mutation({
         createdBy: identity.subject,
         createdAt: new Date().toISOString(),
       });
-      console.log("Invitation created with ID:", invitationId);
 
-      // Send the email
-      console.log("Sending invitation email...");
-      const emailResult = await ctx.scheduler.runAfter(0, internal.email.sendInvitation, {
+      // Send invitation email
+      await ctx.scheduler.runAfter(0, internal.email.sendInvitation, {
         email: args.email,
         name: args.name,
-        teamId: args.teamId,
+        teamId: args.teamId.toString(),
         teamName: team.name,
         role: args.role,
         invitationToken: token,
       });
-      console.log("Email result:", emailResult);
 
       return { success: true };
     } catch (error) {
-      console.error("Failed to process invitation:", error);
-      
-      // If we created an invitation but failed to send email, delete it
+      // Clean up invitation if email fails
       if (invitationId) {
-        console.log("Deleting failed invitation:", invitationId);
         await ctx.db.delete(invitationId);
       }
-
       throw error;
     }
   },
@@ -436,5 +439,31 @@ export const list = query({
   handler: async (ctx) => {
     const teams = await ctx.db.query("teams").collect();
     return teams;
+  },
+});
+
+export const deleteTeam = mutation({
+  args: {
+    teamId: v.id("teams"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const userId = identity.subject;
+    const team = await ctx.db.get(args.teamId);
+
+    if (!team) {
+      throw new Error("Team not found");
+    }
+
+    const userRole = getUserRole(team, userId);
+    if (!userRole || !canManageTeam(userRole)) {
+      throw new Error("Not authorized to delete team");
+    }
+
+    await ctx.db.delete(args.teamId);
   },
 });
