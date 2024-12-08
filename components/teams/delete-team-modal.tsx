@@ -39,11 +39,17 @@ export function DeleteTeamModal({
     try {
       setIsLoading(true);
       await deleteTeam({ teamId });
+      
+      // Close the modal
+      onClose();
+      
+      // Show success message
       toast({
         title: "Success",
         description: "Team deleted successfully",
       });
-      router.push("/dashboard/teams");
+
+      // Just refresh the current page data
       router.refresh();
     } catch (error) {
       toast({
@@ -54,7 +60,6 @@ export function DeleteTeamModal({
       console.error(error);
     } finally {
       setIsLoading(false);
-      onClose();
     }
   };
 
