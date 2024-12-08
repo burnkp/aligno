@@ -1,13 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { TeamCard } from "@/components/teams/team-card";
 import { Team } from "@/types/teams";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { CreateTeamModal } from "@/components/teams/create-team-modal";
 
 export default function TeamsPage() {
   const teamsData = useQuery(api.teams.listUserTeams);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   // Loading state
   if (!teamsData) {
@@ -26,27 +31,49 @@ export default function TeamsPage() {
   const invitedTeams = (teamsData.invitedTeams || []).filter(Boolean) as Team[];
   const hasTeams = memberTeams.length > 0 || invitedTeams.length > 0;
 
-  console.log("Teams data:", {
-    memberTeams: memberTeams.map(t => ({ id: t._id, name: t.name })),
-    invitedTeams: invitedTeams.map(t => ({ id: t._id, name: t.name }))
-  });
-
   // No teams state
   if (!hasTeams) {
     return (
       <div className="container mx-auto py-10">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Teams</h1>
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="bg-purple-600 hover:bg-purple-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Create Team
+          </Button>
+        </div>
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-2">No Teams Yet</h2>
           <p className="text-gray-600">
-            You haven't joined any teams yet. Accept an invitation to get started.
+            Create a new team or accept an invitation to get started.
           </p>
         </div>
+        {showCreateModal && (
+          <CreateTeamModal
+            isOpen={showCreateModal}
+            onClose={() => setShowCreateModal(false)}
+          />
+        )}
       </div>
     );
   }
 
   return (
     <div className="container mx-auto py-10 space-y-8">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Teams</h1>
+        <Button
+          onClick={() => setShowCreateModal(true)}
+          className="bg-purple-600 hover:bg-purple-700"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Create Team
+        </Button>
+      </div>
+
       {memberTeams.length > 0 && (
         <div>
           <h2 className="text-2xl font-bold mb-4">Your Teams</h2>
@@ -81,6 +108,13 @@ export default function TeamsPage() {
             ))}
           </div>
         </div>
+      )}
+
+      {showCreateModal && (
+        <CreateTeamModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+        />
       )}
     </div>
   );

@@ -138,7 +138,7 @@ export const getTeamWithData = query({
 });
 
 // Create a new team
-export const create = mutation({
+export const createTeam = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),

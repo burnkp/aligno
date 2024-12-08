@@ -12,6 +12,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -65,6 +66,7 @@ export function CreateTeamModal({ isOpen, onClose }: CreateTeamModalProps) {
         description: "Something went wrong",
         variant: "destructive",
       });
+      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -75,6 +77,9 @@ export function CreateTeamModal({ isOpen, onClose }: CreateTeamModalProps) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create New Team</DialogTitle>
+          <DialogDescription>
+            Create a new team and start collaborating with your colleagues.
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -111,7 +116,11 @@ export function CreateTeamModal({ isOpen, onClose }: CreateTeamModalProps) {
               <Button variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button 
+                type="submit" 
+                disabled={isLoading}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
                 Create Team
               </Button>
             </div>
