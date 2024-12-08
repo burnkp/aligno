@@ -15,11 +15,11 @@ The team cards have been redesigned to provide a cleaner, more intuitive interfa
 
 ### Member Display
 - **Team Leader**: 
-  - Marked with a filled purple circle icon
+  - Marked with a filled purple circle icon (`CircleDot`)
   - "(Team Leader)" label in purple
   - Name in medium font weight
 - **Regular Members**: 
-  - Marked with an outlined gray circle icon
+  - Marked with an outlined gray circle icon (`Circle`)
   - Regular font weight
 
 ### Action Icons
@@ -39,7 +39,18 @@ The team cards have been redesigned to provide a cleaner, more intuitive interfa
    - Only visible to team admins
    - Requires confirmation before deletion
 
-## Member Management
+## Team Management
+
+### Creating Teams
+- **Create Team Button**:
+  - Located at the top of the Teams page
+  - Purple button with Plus icon
+  - Opens create team modal
+- **Create Team Modal**:
+  - Form with team name (required) and description (optional)
+  - Input validation using Zod
+  - Success/error notifications using toast
+  - Automatically updates UI after creation
 
 ### Adding Members
 - Team admins can invite new members via email
@@ -60,9 +71,10 @@ The team cards have been redesigned to provide a cleaner, more intuitive interfa
 
 ### Team Deletion
 - Only team admins can delete teams
-- Requires confirmation
+- Requires confirmation via modal
 - Deletes all associated data
-- Redirects to teams page after successful deletion
+- Updates UI immediately after deletion
+- Stays on Teams page after deletion
 
 ## Implementation Details
 
@@ -72,29 +84,34 @@ The team cards have been redesigned to provide a cleaner, more intuitive interfa
    - Uses Shadcn UI components for consistent styling
    - Implements role-based permission checks
 
-2. `InviteMemberModal`: Modal for sending invitations
+2. `CreateTeamModal`: Modal for creating new teams
+   - Located in: `components/teams/create-team-modal.tsx`
+   - Form validation with Zod
+   - Proper error handling and feedback
+   - Matches purple theme
+
+3. `InviteMemberModal`: Modal for sending invitations
    - Located in: `components/teams/invite-member-modal.tsx`
    - Integrates with email service
    - Validates email addresses
 
-3. `RemoveMemberModal`: Modal for removing team members
+4. `RemoveMemberModal`: Modal for removing team members
    - Located in: `components/teams/remove-member-modal.tsx`
    - Shows filterable list of removable members
    - Implements proper error handling
 
-4. `DeleteTeamModal`: Modal for team deletion
+5. `DeleteTeamModal`: Modal for team deletion
    - Located in: `components/teams/delete-team-modal.tsx`
    - Uses AlertDialog for confirmation
-   - Handles navigation after deletion
+   - Proper error handling and state updates
 
-### Database Operations
-Located in `convex/teams.ts`:
+### Database Operations (convex/teams.ts)
+- `createTeam`: Creates new teams with proper member structure
 - `inviteMember`: Handles member invitation process
 - `removeMember`: Manages member removal with proper checks
 - `deleteTeam`: Handles team deletion with authorization
 
-### Permissions
-Located in `utils/permissions.ts`:
+### Permissions (utils/permissions.ts)
 - Role-based access control
 - Separate functions for different permission checks
 - Supports "admin" and "member" roles
@@ -112,10 +129,14 @@ Located in `utils/permissions.ts`:
 - Immediate feedback for user actions
 - Smooth transitions and animations
 - Clear confirmation dialogs for destructive actions
+- Accessibility improvements:
+  - Proper ARIA labels
+  - Dialog descriptions
+  - Keyboard navigation support
 
 ## Future Improvements
 1. Add bulk member management
 2. Implement member role changes
 3. Add team transfer functionality
 4. Enhanced activity logging
-5. Member invitation tracking dashboard 
+5. Member invitation tracking dashboard
