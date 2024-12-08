@@ -442,6 +442,47 @@ export const list = query({
   },
 });
 
+export const removeMember = mutation({
+  args: {
+    teamId: v.id("teams"),
+    userId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const team = await ctx.db.get(args.teamId);
+    if (!team) {
+      throw new Error("Team not found");
+    }
+
+    // Check if the current user is an admin
+    const currentUserMember = team.members.find(m => m.userId === identity.subject);
+    if (!currentUserMember || currentUserMember.role !== "admin") {
+      throw new Error("Not authorized to remove members");
+    }
+
+    // Check if trying to remove an admin
+    const targetMember = team.members.find(m => m.userId === args.userId);
+    if (!targetMember) {
+      throw new Error("Member not found");
+    }
+    if (targetMember.role === "admin") {
+      throw new Error("Cannot remove an admin");
+    }
+
+    // Remove the member
+    const updatedMembers = team.members.filter(m => m.userId !== args.userId);
+    await ctx.db.patch(args.teamId, {
+      members: updatedMembers,
+    });
+
+    return { success: true };
+  },
+});
+
 export const deleteTeam = mutation({
   args: {
     teamId: v.id("teams"),
@@ -452,18 +493,18 @@ export const deleteTeam = mutation({
       throw new Error("Not authenticated");
     }
 
-    const userId = identity.subject;
     const team = await ctx.db.get(args.teamId);
-
     if (!team) {
       throw new Error("Team not found");
     }
 
-    const userRole = getUserRole(team, userId);
-    if (!userRole || !canManageTeam(userRole)) {
+    // Check if the current user is an admin
+    const member = team.members.find(m => m.userId === identity.subject);
+    if (!member || member.role !== "admin") {
       throw new Error("Not authorized to delete team");
     }
 
     await ctx.db.delete(args.teamId);
+    return { success: true };
   },
 });
