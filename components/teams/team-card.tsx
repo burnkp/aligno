@@ -5,14 +5,13 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserPlus, UserMinus, Trash2, Circle, CircleDot } from "lucide-react";
 import { InviteMemberModal } from "./invite-member-modal";
 import { RemoveMemberModal } from "./remove-member-modal";
 import { DeleteTeamModal } from "./delete-team-modal";
 import { Id } from "@/convex/_generated/dataModel";
 import { TeamMember } from "@/types/teams";
 import { getUserRole, canInviteMembers, canManageTeam } from "@/utils/permissions";
-import { UserPlus, UserMinus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TeamCardProps {
@@ -106,23 +105,16 @@ export function TeamCard({
           <div className="mt-4">
             <h3 className="text-sm font-medium text-gray-500 mb-3">Team Members</h3>
             <div className="space-y-3">
-              {sortedMembers.map((member, index) => (
+              {sortedMembers.map((member) => (
                 <div
                   key={member.userId}
                   className="flex items-center gap-3"
                 >
-                  <Avatar className={cn(
-                    "h-8 w-8",
-                    member.role === "admin" && "ring-2 ring-purple-500"
-                  )}>
-                    <AvatarImage
-                      src={`https://avatar.vercel.sh/${member.email}`}
-                      alt={member.name}
-                    />
-                    <AvatarFallback>
-                      {member.name.substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  {member.role === "admin" ? (
+                    <CircleDot className="h-4 w-4 text-purple-600 flex-shrink-0" />
+                  ) : (
+                    <Circle className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                  )}
                   <div>
                     <p className={cn(
                       "text-sm",
