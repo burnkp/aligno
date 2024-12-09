@@ -20,6 +20,7 @@ export default defineSchema({
     status: v.union(v.literal("active"), v.literal("inactive")),
     subscription: v.object({
       plan: v.string(),
+      status: v.string(),
       startDate: v.string(),
       endDate: v.optional(v.string()),
     }),
@@ -29,7 +30,7 @@ export default defineSchema({
 
   // Users table - Stores user data with role and organization mapping
   users: defineTable({
-    userId: v.string(), // Clerk User ID
+    userId: v.string(),
     email: v.string(),
     name: v.string(),
     role: v.union(
@@ -38,27 +39,20 @@ export default defineSchema({
       v.literal("team_leader"),
       v.literal("team_member")
     ),
-    organizationId: v.id("organizations"),
+    organizationId: v.union(v.literal("SYSTEM"), v.string()),
     createdAt: v.string(),
     updatedAt: v.string(),
   })
-    .index("by_clerk_id", ["userId"])
-    .index("by_email", ["email"])
-    .index("by_organization", ["organizationId"]),
+    .index("by_userId", ["userId"])
+    .index("by_email", ["email"]),
 
   // Teams table - Stores team data with organization mapping
   teams: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
-    organizationId: v.id("organizations"),
-    leaderId: v.string(), // Clerk User ID of team leader
-    members: v.array(
-      v.object({
-        userId: v.string(),
-        role: v.union(v.literal("leader"), v.literal("member")),
-        joinedAt: v.string(),
-      })
-    ),
+    organizationId: v.optional(v.string()),
+    leaderId: v.optional(v.string()),
+    createdBy: v.optional(v.string()),
     settings: v.optional(
       v.object({
         isPrivate: v.boolean(),
@@ -66,19 +60,28 @@ export default defineSchema({
         requireLeaderApproval: v.boolean(),
       })
     ),
-    createdAt: v.string(),
-    updatedAt: v.string(),
+    members: v.array(
+      v.object({
+        userId: v.string(),
+        email: v.optional(v.string()),
+        name: v.optional(v.string()),
+        role: v.union(v.literal("leader"), v.literal("member"), v.literal("admin")),
+        joinedAt: v.string(),
+      })
+    ),
+    createdAt: v.optional(v.string()),
+    updatedAt: v.optional(v.string()),
   })
     .index("by_organization", ["organizationId"])
     .index("by_leader", ["leaderId"]),
 
   // Audit logs table - Tracks important system events
   auditLogs: defineTable({
-    organizationId: v.optional(v.id("organizations")),
-    userId: v.string(), // Clerk User ID
+    userId: v.string(),
     action: v.string(),
     resource: v.string(),
     details: v.any(),
+    organizationId: v.optional(v.string()),
     timestamp: v.string(),
   }).index("by_organization", ["organizationId"]),
 });

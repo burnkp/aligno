@@ -1,44 +1,41 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
-import { redirect } from "next/navigation";
+import { AdminSidebar } from "@/components/admin/admin-sidebar";
+import { useAuth, useSession } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Loader } from "lucide-react";
-import { AdminSidebar } from "@/components/admin/admin-sidebar";
+import { redirect } from "next/navigation";
+import { Loader2 } from "lucide-react";
+
+const SUPER_ADMIN_EMAIL = "kushtrim@promnestria.biz";
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { userId, isLoaded } = useAuth();
-  const user = useQuery(api.users.getUser, {
-    userId: userId ?? "",
-  });
+  const { isSignedIn, userId } = useAuth();
+  const { session } = useSession();
+  const user = useQuery(api.users.getUser, { userId: userId ?? "" });
 
-  // Show loading state
-  if (!isLoaded || user === undefined) {
+  // Handle loading state
+  if (!user || !session) {
     return (
       <div className="h-screen w-screen flex items-center justify-center">
-        <Loader className="h-8 w-8 animate-spin" />
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
 
   // Redirect if not authenticated or not super admin
-  if (!userId || user?.role !== "super_admin") {
+  if (!isSignedIn || session.user.emailAddresses[0].emailAddress !== SUPER_ADMIN_EMAIL) {
     redirect("/");
   }
 
   return (
-    <div className="h-screen">
-      <div className="hidden md:flex h-full w-72 flex-col fixed inset-y-0 z-50">
-        <AdminSidebar />
-      </div>
-      <main className="md:pl-72 h-full">
-        <div className="h-full px-4 py-6 lg:px-8">{children}</div>
-      </main>
+    <div className="h-screen flex dark:bg-background">
+      <AdminSidebar />
+      <main className="flex-1 overflow-y-auto p-8">{children}</main>
     </div>
   );
 } 

@@ -14,33 +14,31 @@ import { api } from "@/convex/_generated/api";
 import { Plus, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { CreateOrganizationModal } from "@/components/admin/create-organization-modal";
+import { OrganizationSetupWizard } from "@/components/admin/organization-setup-wizard";
+import { PageHeader } from "@/components/page-header";
 
 export default function OrganizationsPage() {
   const organizations = useQuery(api.organizations.getAllOrganizations);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isSetupWizardOpen, setIsSetupWizardOpen] = useState(false);
 
   const filteredOrganizations = organizations?.filter((org) =>
     org.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Organizations</h1>
-          <p className="text-muted-foreground">
-            Manage customer organizations and their settings
-          </p>
-        </div>
-        <Button onClick={() => setIsCreateModalOpen(true)}>
+    <div className="container mx-auto py-10">
+      <PageHeader
+        heading="Organizations"
+        description="Manage customer organizations and their settings"
+      >
+        <Button onClick={() => setIsSetupWizardOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Add Organization
         </Button>
-      </div>
+      </PageHeader>
 
-      <div className="flex items-center space-x-2 mb-4">
+      <div className="flex items-center space-x-2 my-6">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
           <Input
@@ -101,9 +99,9 @@ export default function OrganizationsPage() {
         </Table>
       </div>
 
-      <CreateOrganizationModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+      <OrganizationSetupWizard
+        isOpen={isSetupWizardOpen}
+        onClose={() => setIsSetupWizardOpen(false)}
       />
     </div>
   );
