@@ -11,9 +11,8 @@ import { UserRole } from "./lib/permissions";
  */
 export const createUser = mutation({
   args: {
-    userId: v.string(), // Clerk User ID
-    email: v.string(),
     name: v.string(),
+    email: v.string(),
     role: v.union(
       v.literal("org_admin"),
       v.literal("team_leader"),
@@ -22,59 +21,40 @@ export const createUser = mutation({
     organizationId: v.id("organizations"),
   },
   async handler(ctx, args) {
+    const { name, email, role, organizationId } = args;
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
     }
-    const creatorId = identity.subject;
-    const { userId, email, name, role, organizationId } = args;
+    const userId = identity.subject;
 
-    // Get creator's details
-    const creator = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("userId", creatorId))
-      .first();
-
-    if (!creator) {
-      throw new Error("Creator not found");
+    // Check if user is super_admin
+    const isSuperAdminUser = await isSuperAdmin(ctx.db, userId);
+    if (!isSuperAdminUser) {
+      throw new Error("Only super admin can create users");
     }
 
-    // Check role-based permissions
-    if (role === "org_admin" && !creator.role.includes("super_admin")) {
-      throw new Error("Only super admin can create org admin users");
+    // Check if organization exists
+    const organization = await ctx.db.get(organizationId);
+    if (!organization) {
+      throw new Error("Organization not found");
     }
 
-    if (
-      role === "team_leader" &&
-      !["super_admin", "org_admin"].includes(creator.role)
-    ) {
-      throw new Error("Only super admin and org admin can create team leader users");
-    }
-
-    if (
-      role === "team_member" &&
-      !["super_admin", "org_admin", "team_leader"].includes(creator.role)
-    ) {
-      throw new Error(
-        "Only super admin, org admin, and team leader can create team member users"
-      );
-    }
-
-    // Check if user already exists
+    // Check if email is already in use
     const existingUser = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("userId", userId))
+      .withIndex("by_email", (q) => q.eq("email", email))
       .first();
 
     if (existingUser) {
-      throw new Error("User already exists");
+      throw new Error("Email already in use");
     }
 
     // Create the user
     const newUserId = await ctx.db.insert("users", {
-      userId,
-      email,
+      userId: "", // This will be set when the user first signs in
       name,
+      email,
       role,
       organizationId,
       createdAt: new Date().toISOString(),
@@ -83,7 +63,7 @@ export const createUser = mutation({
 
     // Log the action
     await logAuditEvent(ctx.db, {
-      userId: creatorId,
+      userId,
       action: "create",
       resource: "user",
       details: { newUserId, email, role },
@@ -95,74 +75,87 @@ export const createUser = mutation({
 });
 
 /**
- * Update a user
- * super_admin can update any user
- * org_admin can update users in their organization
- * team_leader can update team_member users in their team
- * team_member can only update their own profile
+ * Update an existing user
+ * Only super_admin can update org_admin users
+ * Only super_admin and org_admin can update team_leader users
+ * Only super_admin, org_admin, and team_leader can update team_member users
  */
 export const updateUser = mutation({
   args: {
-    userId: v.string(), // Clerk User ID
+    userId: v.string(),
     updates: v.object({
-      name: v.optional(v.string()),
-      email: v.optional(v.string()),
-      role: v.optional(
-        v.union(
-          v.literal("org_admin"),
-          v.literal("team_leader"),
-          v.literal("team_member")
-        )
+      name: v.string(),
+      email: v.string(),
+      role: v.union(
+        v.literal("org_admin"),
+        v.literal("team_leader"),
+        v.literal("team_member")
       ),
+      organizationId: v.id("organizations"),
     }),
   },
   async handler(ctx, args) {
-    const { userId: targetUserId, updates } = args;
+    const { userId, updates } = args;
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
     }
-    const updaterId = identity.subject;
+    const currentUserId = identity.subject;
 
-    // Get target user
-    const targetUser = await ctx.db
+    // Check if user is super_admin
+    const isSuperAdminUser = await isSuperAdmin(ctx.db, currentUserId);
+    if (!isSuperAdminUser) {
+      throw new Error("Only super admin can update users");
+    }
+
+    // Check if organization exists
+    const organization = await ctx.db.get(updates.organizationId);
+    if (!organization) {
+      throw new Error("Organization not found");
+    }
+
+    // Get the user to update
+    const user = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("userId", targetUserId))
+      .withIndex("by_clerk_id", (q) => q.eq("userId", userId))
       .first();
 
-    if (!targetUser) {
+    if (!user) {
       throw new Error("User not found");
     }
 
-    // Check permissions
-    const hasPermission = await checkPermission(ctx.db, {
-      userId: updaterId,
-      action: "update",
-      resource: "user",
-      organizationId: targetUser.organizationId,
-    });
+    // Check if email is already in use by another user
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", updates.email))
+      .first();
 
-    if (!hasPermission) {
-      throw new Error("Not authorized to update this user");
+    if (existingUser && existingUser._id !== user._id) {
+      throw new Error("Email already in use");
     }
 
     // Update the user
-    const id = targetUser._id;
-    await ctx.db.patch(id, {
-      ...updates,
+    await ctx.db.patch(user._id, {
+      name: updates.name,
+      email: updates.email,
+      role: updates.role,
+      organizationId: updates.organizationId,
       updatedAt: new Date().toISOString(),
     });
 
     // Log the action
     await logAuditEvent(ctx.db, {
-      userId: updaterId,
+      userId: currentUserId,
       action: "update",
       resource: "user",
-      details: { targetUserId, updates },
-      organizationId: targetUser.organizationId,
+      details: {
+        targetUserId: userId,
+        updates,
+      },
+      organizationId: updates.organizationId,
     });
 
-    return id;
+    return user._id;
   },
 });
 
@@ -240,5 +233,26 @@ export const getUser = query({
     }
 
     return user;
+  },
+});
+
+/**
+ * Get all users in the system
+ * Only super_admin can view all users
+ */
+export const getAllUsers = query({
+  async handler(ctx) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+    const userId = identity.subject;
+
+    // Check if user is super_admin
+    if (!(await isSuperAdmin(ctx.db, userId))) {
+      throw new Error("Only super admin can view all users");
+    }
+
+    return await ctx.db.query("users").collect();
   },
 }); 

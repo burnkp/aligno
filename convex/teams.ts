@@ -1,510 +1,308 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
-import { internal } from "./_generated/api";
+import { isSuperAdmin, isOrgAdmin } from "./lib/permissions";
 
-// Get all teams (used by dashboard)
-export const getTeams = query({
-  args: {},
-  handler: async (ctx) => {
+/**
+ * Get all teams for an organization
+ */
+export const getOrganizationTeams = query({
+  args: { organizationId: v.id("organizations") },
+  async handler(ctx, args) {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
+    if (!identity) throw new Error("Not authenticated");
+
+    const userId = identity.subject;
+    const isSuperAdminUser = await isSuperAdmin(ctx.db, userId);
+    const isOrgAdminUser = await isOrgAdmin(ctx.db, userId, args.organizationId);
+
+    // Only super admin and org admin can view all teams
+    if (!isSuperAdminUser && !isOrgAdminUser) {
+      throw new Error("Not authorized to view teams");
     }
 
-    // Get all teams where user is a member or creator
     const teams = await ctx.db
       .query("teams")
-      .collect();
-
-    return teams.filter(team => 
-      team.createdBy === identity.subject || 
-      team.members.some(member => member.userId === identity.subject)
-    );
-  },
-});
-
-// List teams that the user has access to (used by teams page)
-export const listUserTeams = query({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    // Get all teams
-    const allTeams = await ctx.db.query("teams").collect();
-    
-    // Filter teams where user is either creator or member
-    const memberTeams = allTeams.filter(team => {
-      // Check if user is creator
-      if (team.createdBy === identity.subject) {
-        return true;
-      }
-      // Check if user is in members array
-      return team.members.some(member => member.userId === identity.subject);
-    });
-
-    // Get teams where user has pending invitations
-    const pendingInvitations = await ctx.db
-      .query("invitations")
-      .withIndex("by_token")
-      .filter(q => 
-        q.and(
-          q.eq(q.field("email"), identity.email!),
-          q.eq(q.field("status"), "pending")
-        )
+      .withIndex("by_organization", (q) =>
+        q.eq("organizationId", args.organizationId)
       )
       .collect();
 
-    // Get the teams for pending invitations
-    const invitedTeamIds = pendingInvitations.map(inv => inv.teamId);
-    const invitedTeams = await Promise.all(
-      invitedTeamIds.map(id => ctx.db.get(id))
-    );
-
-    console.log("Found teams for user:", {
-      userId: identity.subject,
-      memberTeamsCount: memberTeams.length,
-      invitedTeamsCount: invitedTeams.length,
-      memberTeams: memberTeams.map(t => ({ id: t._id, name: t.name }))
-    });
-
-    return {
-      memberTeams,
-      invitedTeams: invitedTeams.filter(Boolean)
-    };
+    return teams;
   },
 });
 
-// Get a specific team with all its data
-export const getTeamWithData = query({
+/**
+ * Get a single team by ID
+ */
+export const getTeam = query({
   args: { teamId: v.id("teams") },
-  handler: async (ctx, args) => {
+  async handler(ctx, args) {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
+    if (!identity) throw new Error("Not authenticated");
 
-    // Get the team
     const team = await ctx.db.get(args.teamId);
-    if (!team) {
-      throw new Error("Team not found");
+    if (!team) throw new Error("Team not found");
+    if (!team.organizationId) throw new Error("Team has no organization");
+
+    const userId = identity.subject;
+    const isSuperAdminUser = await isSuperAdmin(ctx.db, userId);
+    const isOrgAdminUser = await isOrgAdmin(ctx.db, userId, team.organizationId);
+    const isTeamMember = team.members.some(
+      (member) => member.userId === userId
+    );
+
+    // Only super admin, org admin, and team members can view team details
+    if (!isSuperAdminUser && !isOrgAdminUser && !isTeamMember) {
+      throw new Error("Not authorized to view team details");
     }
 
-    // Check if user is a member or creator
-    const isMember = team.members.some(m => m.userId === identity.subject) || 
-                    team.createdBy === identity.subject;
-    
-    // Check if user has a pending invitation
-    const hasPendingInvitation = await ctx.db
-      .query("invitations")
-      .withIndex("by_token")
-      .filter(q => 
-        q.and(
-          q.eq(q.field("teamId"), args.teamId),
-          q.eq(q.field("email"), identity.email!),
-          q.eq(q.field("status"), "pending")
-        )
-      )
-      .first();
-
-    // If user is neither a member nor has a pending invitation, deny access
-    if (!isMember && !hasPendingInvitation) {
-      throw new Error("Access denied");
-    }
-
-    // Get team's objectives
-    const objectives = await ctx.db
-      .query("strategicObjectives")
-      .withIndex("by_team")
-      .filter(q => q.eq(q.field("teamId"), args.teamId))
-      .collect();
-
-    // Get team's KPIs
-    const kpis = await ctx.db
-      .query("kpis")
-      .withIndex("by_team")
-      .filter(q => q.eq(q.field("teamId"), args.teamId))
-      .collect();
-
-    return {
-      ...team,
-      objectives,
-      kpis,
-    };
+    return team;
   },
 });
 
-// Create a new team
+/**
+ * Create a new team
+ */
 export const createTeam = mutation({
   args: {
     name: v.string(),
     description: v.optional(v.string()),
+    organizationId: v.id("organizations"),
+    leaderId: v.string(),
+    members: v.array(
+      v.object({
+        userId: v.string(),
+        role: v.union(v.literal("leader"), v.literal("member")),
+        joinedAt: v.string(),
+      })
+    ),
   },
-  handler: async (ctx, args) => {
+  async handler(ctx, args) {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
+    if (!identity) throw new Error("Not authenticated");
+
+    const userId = identity.subject;
+    const isSuperAdminUser = await isSuperAdmin(ctx.db, userId);
+    const isOrgAdminUser = await isOrgAdmin(ctx.db, userId, args.organizationId);
+
+    // Only super admin and org admin can create teams
+    if (!isSuperAdminUser && !isOrgAdminUser) {
+      throw new Error("Not authorized to create teams");
     }
 
+    // Check if organization exists
+    const organization = await ctx.db.get(args.organizationId);
+    if (!organization) throw new Error("Organization not found");
+
+    // Create the team
     const teamId = await ctx.db.insert("teams", {
       name: args.name,
       description: args.description,
-      createdBy: identity.subject,
-      members: [{
-        userId: identity.subject,
-        email: identity.email!,
-        name: identity.name || "Unknown",
-        role: "admin",
-        joinedAt: new Date().toISOString(),
-      }],
+      organizationId: args.organizationId,
+      leaderId: args.leaderId,
+      members: args.members,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     });
 
     return teamId;
   },
 });
 
-// Invite a member to the team
-export const inviteMember = mutation({
+/**
+ * Update a team
+ */
+export const updateTeam = mutation({
   args: {
     teamId: v.id("teams"),
-    email: v.string(),
-    name: v.string(),
-    role: v.union(v.literal("leader"), v.literal("member")),
+    updates: v.object({
+      name: v.optional(v.string()),
+      description: v.optional(v.string()),
+      leaderId: v.optional(v.string()),
+      settings: v.optional(
+        v.object({
+          isPrivate: v.boolean(),
+          allowMemberInvites: v.boolean(),
+          requireLeaderApproval: v.boolean(),
+        })
+      ),
+      members: v.optional(
+        v.array(
+          v.object({
+            userId: v.string(),
+            role: v.union(v.literal("leader"), v.literal("member")),
+            joinedAt: v.string(),
+          })
+        )
+      ),
+    }),
   },
-  handler: async (ctx, args) => {
+  async handler(ctx, args) {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
+    if (!identity) throw new Error("Not authenticated");
 
-    // Get the team
     const team = await ctx.db.get(args.teamId);
-    if (!team) {
-      throw new Error("Team not found");
+    if (!team) throw new Error("Team not found");
+    if (!team.organizationId) throw new Error("Team has no organization");
+
+    const userId = identity.subject;
+    const isSuperAdminUser = await isSuperAdmin(ctx.db, userId);
+    const isOrgAdminUser = await isOrgAdmin(ctx.db, userId, team.organizationId);
+    const isTeamLeader = team.leaderId === userId;
+
+    // Only super admin, org admin, and team leader can update team
+    if (!isSuperAdminUser && !isOrgAdminUser && !isTeamLeader) {
+      throw new Error("Not authorized to update team");
     }
 
-    // Check if user is admin or leader
-    const member = team.members.find(m => m.userId === identity.subject);
-    if (!member || (member.role !== "admin" && member.role !== "leader")) {
-      throw new Error("Not authorized to invite members");
-    }
+    // If updating leader, ensure user exists
+    if (args.updates.leaderId) {
+      const newLeader = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) => q.eq("userId", args.updates.leaderId!))
+        .first();
 
-    // Generate invitation token
-    const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
-    let invitationId: Id<"invitations"> | null = null;
-
-    try {
-      // Store invitation
-      invitationId = await ctx.db.insert("invitations", {
-        teamId: args.teamId,
-        email: args.email,
-        name: args.name,
-        role: args.role,
-        token,
-        status: "pending",
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        createdBy: identity.subject,
-        createdAt: new Date().toISOString(),
-      });
-
-      // Send invitation email
-      await ctx.scheduler.runAfter(0, internal.email.sendInvitation, {
-        email: args.email,
-        name: args.name,
-        teamId: args.teamId.toString(),
-        teamName: team.name,
-        role: args.role,
-        invitationToken: token,
-      });
-
-      return { success: true };
-    } catch (error) {
-      // Clean up invitation if email fails
-      if (invitationId) {
-        await ctx.db.delete(invitationId);
+      if (!newLeader) {
+        throw new Error("New team leader not found");
       }
-      throw error;
     }
+
+    // Update the team
+    await ctx.db.patch(args.teamId, {
+      ...args.updates,
+      updatedAt: new Date().toISOString(),
+    });
+
+    // Log the update
+    await logAuditEvent(ctx.db, {
+      userId,
+      action: "update",
+      resource: "team",
+      details: {
+        teamId: args.teamId,
+        updates: args.updates,
+      },
+      organizationId: team.organizationId,
+    });
+
+    return true;
   },
 });
 
-export const acceptInvitation = mutation({
-  args: {
-    token: v.string(),
-    userId: v.string(),
-    userEmail: v.string(),
-  },
-  handler: async (ctx, args) => {
+/**
+ * Delete a team
+ */
+export const deleteTeam = mutation({
+  args: { teamId: v.id("teams") },
+  async handler(ctx, args) {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
+    if (!identity) throw new Error("Not authenticated");
+
+    const team = await ctx.db.get(args.teamId);
+    if (!team) throw new Error("Team not found");
+    if (!team.organizationId) throw new Error("Team has no organization");
+
+    const userId = identity.subject;
+    const isSuperAdminUser = await isSuperAdmin(ctx.db, userId);
+    const isOrgAdminUser = await isOrgAdmin(ctx.db, userId, team.organizationId);
+
+    // Only super admin and org admin can delete teams
+    if (!isSuperAdminUser && !isOrgAdminUser) {
+      throw new Error("Not authorized to delete team");
     }
 
-    // Get the invitation
-    const invitation = await ctx.db
-      .query("invitations")
-      .withIndex("by_token", (q) => q.eq("token", args.token))
-      .first();
+    await ctx.db.delete(args.teamId);
+    return true;
+  },
+});
 
-    if (!invitation) {
-      throw new Error("Invalid invitation token");
+/**
+ * Add a member to a team
+ */
+export const addMember = mutation({
+  args: {
+    teamId: v.id("teams"),
+    userId: v.string(),
+    role: v.union(v.literal("leader"), v.literal("member")),
+  },
+  async handler(ctx, args) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const team = await ctx.db.get(args.teamId);
+    if (!team) throw new Error("Team not found");
+    if (!team.organizationId) throw new Error("Team has no organization");
+
+    const userId = identity.subject;
+    const isSuperAdminUser = await isSuperAdmin(ctx.db, userId);
+    const isOrgAdminUser = await isOrgAdmin(ctx.db, userId, team.organizationId);
+    const isTeamLeader = team.leaderId === userId;
+
+    // Only super admin, org admin, and team leader can add members
+    if (!isSuperAdminUser && !isOrgAdminUser && !isTeamLeader) {
+      throw new Error("Not authorized to add team members");
     }
 
-    if (invitation.status !== "pending") {
-      throw new Error("Invitation is no longer valid");
+    // Check if user is already a member
+    const isMember = team.members.some((member) => member.userId === args.userId);
+    if (isMember) {
+      throw new Error("User is already a team member");
     }
 
-    if (new Date(invitation.expiresAt) < new Date()) {
-      throw new Error("Invitation has expired");
-    }
-
-    // Get the team
-    const team = await ctx.db.get(invitation.teamId);
-    if (!team) {
-      throw new Error("Team not found");
-    }
-
-    // Check if user is already a member of this specific team
-    const existingMembership = team.members.find(member => 
-      member.userId === args.userId && 
-      member.email === args.userEmail
-    );
-
-    if (existingMembership) {
-      // If they're already a member of this team, redirect them
-      return {
-        success: true,
-        teamId: invitation.teamId,
-        alreadyMember: true
-      };
-    }
-
-    const now = new Date().toISOString();
-
-    // Add user to team members
-    await ctx.db.patch(invitation.teamId, {
+    // Add the member
+    await ctx.db.patch(args.teamId, {
       members: [
         ...team.members,
         {
           userId: args.userId,
-          role: invitation.role,
-          email: args.userEmail,
-          name: identity.name || invitation.name,
-          joinedAt: now,
+          role: args.role,
+          joinedAt: new Date().toISOString(),
         },
       ],
+      updatedAt: new Date().toISOString(),
     });
 
-    // Update invitation status
-    await ctx.db.patch(invitation._id, {
-      status: "accepted",
-      acceptedAt: now,
-      acceptedBy: args.userId,
-    });
-
-    return {
-      success: true,
-      teamId: invitation.teamId,
-      alreadyMember: false
-    };
+    return true;
   },
 });
 
-// Get user's teams with their role
-export const getUserTeams = query({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const teams = await ctx.db
-      .query("teams")
-      .filter((q) => 
-        q.eq(
-          q.field("members"),
-          identity.subject
-        )
-      )
-      .collect();
-
-    return teams.map(team => ({
-      _id: team._id,
-      name: team.name,
-      role: team.members.find(m => m.userId === identity.subject)?.role
-    }));
-  },
-});
-
-// Get team data with objectives and KPIs
-export const getTeamWithObjectives = query({
-  args: { teamId: v.string() },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const team = await ctx.db.get(args.teamId as Id<"teams">);
-    if (!team) throw new Error("Team not found");
-
-    // Check if user is member of team
-    const member = team.members.find(m => m.userId === identity.subject);
-    if (!member) throw new Error("Not authorized");
-
-    // Get team's objectives and KPIs
-    const objectives = await ctx.db
-      .query("strategicObjectives")
-      .filter(q => q.eq(q.field("teamId"), args.teamId))
-      .collect();
-
-    const kpis = await ctx.db
-      .query("kpis")
-      .filter(q => q.eq(q.field("teamId"), args.teamId))
-      .collect();
-
-    return {
-      ...team,
-      objectives,
-      kpis,
-    };
-  },
-});
-
-export const getUserRole = query({
-  args: { teamId: v.string() },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const team = await ctx.db.get(args.teamId as Id<"teams">);
-    if (!team) throw new Error("Team not found");
-
-    const member = team.members.find(m => m.userId === identity.subject);
-    if (!member) return null;
-
-    return member.role;
-  },
-});
-
-// Add this query to fetch team member's data
-export const getTeamMemberData = query({
-  args: { teamId: v.id("teams") },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    // Get team
-    const team = await ctx.db.get(args.teamId);
-    if (!team) throw new Error("Team not found");
-
-    // Verify user is a team member
-    const isMember = team.members.some(m => m.userId === identity.subject);
-    if (!isMember) throw new Error("Not authorized");
-
-    // Get team KPIs and OKRs
-    const kpis = await ctx.db
-      .query("kpis")
-      .withIndex("by_team", q => q.eq("teamId", args.teamId))
-      .collect();
-
-    const okrs = await ctx.db
-      .query("objectives")
-      .withIndex("by_team", q => q.eq("teamId", args.teamId))
-      .collect();
-
-    return {
-      team,
-      kpis,
-      okrs,
-      userRole: team.members.find(m => m.userId === identity.subject)?.role
-    };
-  },
-});
-
-export const getTeam = query({
-  args: { teamId: v.id("teams") },
-  handler: async (ctx, args) => {
-    const team = await ctx.db.get(args.teamId);
-    if (!team) {
-      throw new Error("Team not found");
-    }
-    return team;
-  },
-});
-
-// List all teams
-export const list = query({
-  args: {},
-  handler: async (ctx) => {
-    const teams = await ctx.db.query("teams").collect();
-    return teams;
-  },
-});
-
+/**
+ * Remove a member from a team
+ */
 export const removeMember = mutation({
   args: {
     teamId: v.id("teams"),
     userId: v.string(),
   },
-  handler: async (ctx, args) => {
+  async handler(ctx, args) {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
+    if (!identity) throw new Error("Not authenticated");
 
     const team = await ctx.db.get(args.teamId);
-    if (!team) {
-      throw new Error("Team not found");
+    if (!team) throw new Error("Team not found");
+    if (!team.organizationId) throw new Error("Team has no organization");
+
+    const userId = identity.subject;
+    const isSuperAdminUser = await isSuperAdmin(ctx.db, userId);
+    const isOrgAdminUser = await isOrgAdmin(ctx.db, userId, team.organizationId);
+    const isTeamLeader = team.leaderId === userId;
+
+    // Only super admin, org admin, and team leader can remove members
+    if (!isSuperAdminUser && !isOrgAdminUser && !isTeamLeader) {
+      throw new Error("Not authorized to remove team members");
     }
 
-    // Check if the current user is an admin
-    const currentUserMember = team.members.find(m => m.userId === identity.subject);
-    if (!currentUserMember || currentUserMember.role !== "admin") {
-      throw new Error("Not authorized to remove members");
-    }
-
-    // Check if trying to remove an admin
-    const targetMember = team.members.find(m => m.userId === args.userId);
-    if (!targetMember) {
-      throw new Error("Member not found");
-    }
-    if (targetMember.role === "admin") {
-      throw new Error("Cannot remove an admin");
+    // Cannot remove team leader
+    if (args.userId === team.leaderId) {
+      throw new Error("Cannot remove team leader");
     }
 
     // Remove the member
-    const updatedMembers = team.members.filter(m => m.userId !== args.userId);
     await ctx.db.patch(args.teamId, {
-      members: updatedMembers,
+      members: team.members.filter((member) => member.userId !== args.userId),
+      updatedAt: new Date().toISOString(),
     });
 
-    return { success: true };
-  },
-});
-
-export const deleteTeam = mutation({
-  args: {
-    teamId: v.id("teams"),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const team = await ctx.db.get(args.teamId);
-    if (!team) {
-      throw new Error("Team not found");
-    }
-
-    // Check if the current user is an admin
-    const member = team.members.find(m => m.userId === identity.subject);
-    if (!member || member.role !== "admin") {
-      throw new Error("Not authorized to delete team");
-    }
-
-    await ctx.db.delete(args.teamId);
-    return { success: true };
+    return true;
   },
 });

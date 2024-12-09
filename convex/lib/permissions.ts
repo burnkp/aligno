@@ -123,4 +123,20 @@ export async function logAuditEvent(
     organizationId,
     timestamp: new Date().toISOString(),
   });
+}
+
+/**
+ * Check if a user is an organization admin
+ */
+export async function isOrgAdmin(
+  db: DatabaseReader,
+  userId: string,
+  organizationId: Id<"organizations">
+): Promise<boolean> {
+  const user = await db
+    .query("users")
+    .withIndex("by_clerk_id", (q) => q.eq("userId", userId))
+    .first();
+
+  return user?.role === "org_admin" && user?.organizationId === organizationId;
 } 

@@ -50,24 +50,24 @@ export default defineSchema({
   teams: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
-    organizationId: v.optional(v.id("organizations")), // Optional for backward compatibility
-    leaderId: v.optional(v.string()), // Clerk User ID of team leader
-    createdBy: v.optional(v.string()), // For backward compatibility
+    organizationId: v.id("organizations"),
+    leaderId: v.string(), // Clerk User ID of team leader
     members: v.array(
       v.object({
         userId: v.string(),
-        email: v.optional(v.string()), // For backward compatibility
-        name: v.optional(v.string()), // For backward compatibility
-        role: v.union(
-          v.literal("admin"), // For backward compatibility
-          v.literal("leader"),
-          v.literal("member")
-        ),
-        joinedAt: v.optional(v.string()),
+        role: v.union(v.literal("leader"), v.literal("member")),
+        joinedAt: v.string(),
       })
     ),
-    createdAt: v.optional(v.string()), // Optional for backward compatibility
-    updatedAt: v.optional(v.string()), // Optional for backward compatibility
+    settings: v.optional(
+      v.object({
+        isPrivate: v.boolean(),
+        allowMemberInvites: v.boolean(),
+        requireLeaderApproval: v.boolean(),
+      })
+    ),
+    createdAt: v.string(),
+    updatedAt: v.string(),
   })
     .index("by_organization", ["organizationId"])
     .index("by_leader", ["leaderId"]),

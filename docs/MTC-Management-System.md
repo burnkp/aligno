@@ -1,218 +1,139 @@
-# Multi-Tenant Customer Management System (MTCMS)
+# Multi-Tenant Customer Management System
 
-## Overview
-
-The Multi-Tenant Customer Management System (MTCMS) introduces a fully isolated, multi-tenant architecture to Aligno. It allows a single Super Administrator to manage all organizations (customers) and ensures that each organization's data is securely partitioned. Additionally, it implements role-based access control (RBAC) so that org_admin, team_leader, and team_member roles have strictly defined permissions and visibility scopes.
-
-## Key Objectives
-
-1. **Super Administrator Control**: The Super Admin has full visibility and control across all organizations.
-2. **Organization (Customer) Onboarding**: Ability to manually create and manage organizations within Aligno, including setting their org_admin, and tracking their subscription and usage metrics.
-3. **Role-Based Access Control**: Clear role definitions and enforced permissions ensuring that each user only sees and manipulates data belonging to their organization (except the Super Admin).
-4. **Data Isolation and Security**: All queries and data mutations respect organization boundaries, ensuring no cross-tenant data leakage.
-5. **Scalability and Future Integrations**: The schema and workflows are designed with an eye toward future integration of automated billing, advanced analytics, and complex role expansions.
+## System Overview
+A comprehensive platform for managing organizations, teams, and users with role-based access control and analytics capabilities.
 
 ## Implementation Phases
 
-### Phase 1: Database Schema Updates
+### Phase 1: Core Infrastructure ✅
+- Database schema implementation
+- Authentication system
+- Basic RBAC framework
+- Data isolation foundations
 
-#### Goal
-Introduce new entities and fields in Convex to support multi-tenancy and a clear organization-to-user relationship.
+### Phase 2: Admin Dashboard & Core Features ✅
+Implemented core functionality for managing organizations, users, teams, and analytics.
 
-#### Schema Definitions
+#### Completed Features
+1. **Admin Dashboard**
+   - Protected routes with role checks
+   - Responsive sidebar navigation
+   - Modern UI with Shadcn components
 
-##### Organizations (Customers)
-```typescript
-{
-  "id": Id<"organizations">,
-  "name": string,
-  "contactPerson": {
-    "name": string,
-    "email": string,
-    "phone"?: string
-  },
-  "status": "active" | "inactive",
-  "subscription": {
-    "plan": string,
-    "startDate": string,
-    "endDate"?: string
-  },
-  "createdAt": string,
-  "updatedAt": string
-}
-```
+2. **Organization Management**
+   - Organization listing with search
+   - Creation and editing workflow
+   - Status management
+   - Subscription tracking
 
-##### Users (Extended Schema)
-```typescript
-{
-  "userId": string, // Clerk User ID
-  "email": string,
-  "name": string,
-  "role": "super_admin" | "org_admin" | "team_leader" | "team_member",
-  "organizationId": Id<"organizations">,
-  "createdAt": string,
-  "updatedAt": string
-}
-```
+3. **User Management**
+   - User listing with search and filters
+   - Role-based access control
+   - User creation and editing
+   - Profile management
 
-##### Teams (Updated Schema)
-```typescript
-{
-  "name": string,
-  "description"?: string,
-  "organizationId"?: Id<"organizations">, // Optional for backward compatibility
-  "leaderId"?: string, // Clerk User ID of team leader
-  "createdBy"?: string, // For backward compatibility
-  "members": Array<{
-    "userId": string,
-    "email"?: string, // For backward compatibility
-    "name"?: string, // For backward compatibility
-    "role": "admin" | "leader" | "member",
-    "joinedAt"?: string
-  }>,
-  "createdAt"?: string,
-  "updatedAt"?: string
-}
-```
-
-##### Audit Logs
-```typescript
-{
-  "organizationId"?: Id<"organizations">,
-  "userId": string, // Clerk User ID
-  "action": string,
-  "resource": string,
-  "details": any,
-  "timestamp": string
-}
-```
-
-#### Implementation Notes
-
-1. **Authentication Updates**
-   - All functions now use `ctx.auth.getUserIdentity()` for secure authentication
-   - User identification is based on Clerk's `identity.subject`
-   - Added proper authentication checks across all endpoints
-
-2. **Backward Compatibility**
-   - Team schema modified to support existing data structure
-   - Added optional fields for smooth migration
-   - Maintained support for legacy role types
-
-3. **Security Enhancements**
-   - Added comprehensive permission checking
-   - Implemented audit logging for all critical actions
-   - Enforced organization boundaries
-
-### Phase 2: Super Admin Dashboard
-
-#### Goal
-Implement a protected route (/admin/dashboard) accessible only by the Super Admin.
-
-#### Features
-1. **Customer Management Interface**
-   - Organization list with details
-   - Search, sort, and filter capabilities
-   - Organization metrics
-   - New organization creation form
-
-2. **Organization Details View**
-   - Detailed organization information
-   - Team and user management
-   - Activity metrics
-
-3. **Analytics Overview**
-   - Cross-organization analytics
-   - Usage metrics and trends
-
-### Phase 3: Organization-Level Access Control and Onboarding Flow
-
-#### Goal
-Ensure organization data isolation and streamlined onboarding.
-
-#### Key Components
-1. **Authentication and Redirects**
-   - Role-based routing
-   - Organization context management
-
-2. **Onboarding Workflow**
-   - Organization creation process
-   - Admin invitation flow
-   - Initial setup guidance
-
-3. **Data Filtering**
-   - Organization-level data isolation
-   - Permission-based access control
-
-### Phase 4: Role-Based Views and Permissions
-
-#### Goal
-Implement role-specific interfaces and permissions.
-
-#### Role Definitions
-1. **super_admin**
-   - Full system access
-   - Organization management
-   - Global analytics
-
-2. **org_admin**
-   - Organization-wide access
-   - Team management
-   - Organization analytics
-
-3. **team_leader**
-   - Team-level access
+4. **Team Management**
+   - Team creation and configuration
    - Member management
-   - Team analytics
+   - Team settings and permissions
+   - Activity tracking
 
-4. **team_member**
-   - Personal dashboard
-   - Assigned KPIs
-   - Team overview
+5. **Analytics System**
+   - Organization metrics
+   - Team performance tracking
+   - User activity monitoring
+   - Real-time dashboard
 
-### Phase 5: Security & Access Control Implementation
+6. **Audit Logging**
+   - System-wide activity tracking
+   - Security event monitoring
+   - Integration with analytics
 
-#### Goal
-Implement comprehensive security measures.
+#### Planned Enhancements (Future Iterations)
+1. **Organization Features**
+   - Batch operations
+   - Advanced settings management
+   - Custom fields configuration
 
-#### Components
-1. **Middleware & Server-Side Checks**
-   - Permission validation
-   - Resource access control
+2. **User Management**
+   - Batch user operations
+   - Advanced filtering
+   - Role templates
 
-2. **Data Validation**
-   - Input sanitization
-   - Access verification
-   - Error handling
+3. **Team Features**
+   - Team hierarchies
+   - Resource sharing
+   - Advanced permissions
 
-### Phase 6: Testing & Documentation
+4. **Analytics**
+   - Custom reporting
+   - Data export
+   - Advanced visualizations
 
-#### Goal
-Ensure system reliability and maintainability.
+### Phase 3: Organization Access & Onboarding (Next Phase)
+Focus on streamlining organization management and user onboarding.
 
-#### Components
-1. **Testing Strategy**
-   - Unit testing
-   - Integration testing
-   - End-to-end testing
+#### Planned Features
+1. **Organization Onboarding**
+   - Automated setup workflow
+   - Initial admin configuration
+   - Welcome experience
 
-2. **Documentation**
-   - Architecture documentation
-   - API documentation
-   - User guides
+2. **Access Control**
+   - Fine-grained permissions
+   - Custom role definitions
+   - Resource-level access
 
-## Implementation Status
+3. **Data Management**
+   - Organization data migration
+   - Backup and restore
+   - Data retention policies
 
-| Phase | Status | Notes |
-|-------|--------|-------|
-| 1     | Complete| Database schema implemented with backward compatibility |
-| 2     | Pending | Super Admin Dashboard implementation next |
-| 3     | Pending | - |
-| 4     | Pending | - |
-| 5     | Pending | - |
-| 6     | Pending | - |
+### Phase 4: Advanced Features (Future)
+- API integrations
+- Workflow automation
+- Advanced reporting
+- Custom dashboards
 
-## Related Documentation
-- [Organization Onboarding](./OrganizationOnboarding.md)
-- [Role Permissions](./RolePermissions.md)
-- [Team-Level Data Isolation](./TeamDataIsolation.md) 
+## Technical Stack
+
+### Frontend
+- Next.js 13+ with App Router
+- TypeScript
+- Tailwind CSS
+- Shadcn UI
+- React Server Components
+
+### Backend
+- Convex
+- Real-time sync
+- Secure data patterns
+- Analytics engine
+
+## Security Features
+- Role-based access control
+- Organization isolation
+- Audit logging
+- Secure authentication
+
+## Performance
+- React Server Components
+- Efficient queries
+- Data aggregation
+- Caching strategies
+
+## Maintenance
+1. Regular security audits
+2. Performance monitoring
+3. Database optimization
+4. Feature updates
+
+## Documentation Index
+| Document | Purpose |
+|----------|----------|
+| [Organization Onboarding](./OrganizationOnboarding.md) | Organization setup and management |
+| [User Management](./UserManagement.md) | User lifecycle and permissions |
+| [Role Permissions](./RolePermissions.md) | RBAC system details |
+| [Team Management](./TeamManagement.md) | Team operations and structure |
+| [Team Data Isolation](./TeamDataIsolation.md) | Data security and isolation |
+| [Analytics](./Analytics.md) | Metrics and reporting |
