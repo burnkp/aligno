@@ -6,64 +6,9 @@ The RBAC system in Aligno provides granular control over user permissions and ac
 ## Super Admin Configuration
 
 ### Email Configuration
-- Super admin email is hardcoded as `kushtrim@promnestria.biz`
-- This is defined in `convex/users.ts` as `SUPER_ADMIN_EMAIL`
-- The same constant is used in middleware for route protection
-
-### Automatic Creation
-- When the super admin signs in for the first time:
-  1. Clerk authenticates the user
-  2. The `getUser` query checks if the user exists
-  3. If not, and the email matches `SUPER_ADMIN_EMAIL`, a new super admin user is created
-  4. User is automatically assigned the "super_admin" role
-  5. Organization is set to "SYSTEM"
-
-### Authentication Flow
-1. User signs in through Clerk
-2. Middleware checks email against `SUPER_ADMIN_EMAIL`
-3. If matched:
-   - Redirects to `/admin/dashboard` if on auth routes
-   - Allows access to `/admin/*` routes
-   - Redirects to admin dashboard from other routes
-4. If not matched:
-   - Prevents access to `/admin/*` routes
-   - Redirects to appropriate dashboard based on role
-
-### Environment Configuration
-```env
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/
-NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/
-```
-
-## User Roles
-
-### Super Admin
-- **Email**: kushtrim@promnestria.biz
-- **Access Level**: System-wide access
-- **Special Handling**: 
-  - Automatically recognized and created upon first authentication
-  - Direct access to `/admin/dashboard`
-  - Cannot be demoted or removed
-  - Organization ID: "SYSTEM"
-
-### Organization Admin
-- **Access Level**: Organization-wide access
-- **Dashboard**: `/organizations/[organizationId]`
-- **Permissions**: Manage organization settings, teams, and members
-
-### Team Leader
-- **Access Level**: Team-wide access
-- **Dashboard**: `/teams`
-- **Permissions**: Manage team settings and members
-
-### Team Member
-- **Access Level**: Limited team access
-- **Dashboard**: `/teams`
-- **Permissions**: View and participate in team activities
-
-## Implementation Details
+- Super admin email is defined in `config/auth.ts` as part of `SUPER_ADMINS` array
+- Supports multiple super admin emails if needed
+- All email addresses are stored in lowercase for consistency
 
 ### Database Schema
 ```typescript
@@ -81,26 +26,144 @@ users: defineTable({
   createdAt: v.string(),
   updatedAt: v.string(),
 })
+  .index("by_clerk_id", ["userId"])
+  .index("by_email", ["email"])
 ```
 
+### Authentication Flow
+1. User signs in through Clerk
+2. Middleware checks authentication state
+3. For protected routes:
+   - Verifies user authentication
+   - Fetches complete user data from Clerk
+   - Checks email against super admin list
+   - Allows/denies access based on role
+4. For public routes:
+   - Allows access without verification
+5. For auth callback:
+   - Creates super admin user if needed
+   - Sets up initial permissions
+   - Redirects to appropriate dashboard
+
 ### Route Protection
-- Middleware checks user role and email
-- Prevents unauthorized access to admin routes
-- Redirects users to appropriate dashboards
+- Public routes: ["/", "/sign-in*", "/sign-up*"]
+- Auth routes: ["/auth-callback"]
+- Admin routes: "/admin/*"
+- Protected routes: Everything else
+
+### Middleware Implementation
+```typescript
+// Define routes
+const publicRoutes = ["/", "/sign-in*", "/sign-up*"];
+const authRoutes = ["/auth-callback"];
+
+// Route checking
+const isPublicRoute = publicRoutes.some(pattern => {
+  if (pattern.endsWith("*")) {
+    return url.pathname.startsWith(pattern.slice(0, -1));
+  }
+  return url.pathname === pattern;
+});
+
+// Permission checking
+if (url.pathname.startsWith("/admin")) {
+  if (!primaryEmail || !SUPER_ADMINS.includes(primaryEmail)) {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+}
+```
+
+## User Roles
+
+### Super Admin
+- **Access**: Full system access
+- **Routes**: All routes including `/admin/*`
+- **Special Privileges**: 
+  - Can create organizations
+  - Can manage all users
+  - Can access analytics
+  - Can configure system settings
+
+### Organization Admin
+- **Access**: Organization-wide access
+- **Routes**: Organization-specific routes
+- **Privileges**:
+  - Manage organization settings
+  - Create and manage teams
+  - Manage organization members
+
+### Team Leader
+- **Access**: Team-level access
+- **Routes**: Team-specific routes
+- **Privileges**:
+  - Manage team settings
+  - Add/remove team members
+  - View team analytics
+
+### Team Member
+- **Access**: Basic access
+- **Routes**: Team member routes
+- **Privileges**:
+  - View team information
+  - Participate in team activities
+  - Update own profile
+
+## Implementation Details
+
+### Permission Checking
+```typescript
+export async function isSuperAdmin(
+  db: DatabaseReader,
+  userId: string
+): Promise<boolean> {
+  const user = await db
+    .query("users")
+    .withIndex("by_clerk_id", (q) => q.eq("userId", userId))
+    .first();
+  return user?.role === "super_admin";
+}
+```
 
 ### Access Control
-- Route-level protection through middleware
-- Component-level protection through role checks
-- API-level protection through Convex mutations and queries
+- Route-level: Through Next.js middleware
+- API-level: Through Convex queries/mutations
+- Component-level: Through role-based rendering
+
+### Audit Logging
+```typescript
+export async function logAuditEvent(
+  db: DatabaseWriter,
+  args: {
+    userId: string;
+    action: string;
+    resource: string;
+    details: any;
+    organizationId?: Id<"organizations">;
+  }
+) {
+  await db.insert("auditLogs", {
+    userId,
+    action,
+    resource,
+    details,
+    organizationId,
+    timestamp: new Date().toISOString(),
+  });
+}
+```
 
 ## Security Considerations
-- Email-based super admin verification
-- Protected admin routes
-- Role-based API access control
-- Secure session management through Clerk
+1. Email addresses are stored and compared in lowercase
+2. All routes are protected by default
+3. Permissions are checked at multiple levels
+4. Actions are logged for audit purposes
+5. User data is properly isolated
 
 ## Best Practices
-1. Always verify user role before allowing access to protected routes
-2. Use middleware for consistent route protection
-3. Implement proper error handling for authentication failures
-4. Maintain audit logs for security-relevant actions
+1. Always use middleware for route protection
+2. Implement role checks in all mutations/queries
+3. Log security-relevant actions
+4. Validate permissions before operations
+5. Keep super admin list in config
+6. Use proper error handling
+7. Implement proper data isolation
