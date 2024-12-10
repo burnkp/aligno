@@ -1,71 +1,86 @@
-import { authMiddleware, redirectToSignIn } from "@clerk/nextjs";
+import { authMiddleware, clerkClient } from "@clerk/nextjs";
 import { NextResponse } from "next/server";
-import { api } from "@/convex/_generated/api";
-import { ConvexHttpClient } from "convex/browser";
+import { SUPER_ADMINS } from "@/config/auth";
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-const SUPER_ADMIN_EMAIL = "kushtrim@promnestria.biz";
+// Define public routes that don't require authentication
+const publicRoutes = ["/", "/sign-in*", "/sign-up*"];
+
+// Define auth routes that are part of the authentication flow
+const authRoutes = ["/auth-callback"];
 
 export default authMiddleware({
-  // Public routes that don't require authentication
-  publicRoutes: ["/", "/get-started"],
-  
+  debug: true,
   async afterAuth(auth, req) {
-    const { userId, user } = auth;
-    const isPublicRoute = req.url.includes("/get-started") || req.url === "/";
+    console.log("⭐️ Middleware executing for:", req.url);
 
-    // Allow public routes without authentication
+    // Check if the route is public, auth-related, or requires authentication
+    const url = new URL(req.url);
+    const isPublicRoute = publicRoutes.some(pattern => {
+      if (pattern.endsWith("*")) {
+        return url.pathname.startsWith(pattern.slice(0, -1));
+      }
+      return url.pathname === pattern;
+    });
+    const isAuthRoute = authRoutes.includes(url.pathname);
+    const isAuthCallback = url.pathname === "/auth-callback";
+
+    console.log("🔍 Route check:", {
+      path: url.pathname,
+      isPublicRoute,
+      isAuthRoute,
+      isAuthCallback,
+    });
+
+    // Allow access to public routes
     if (isPublicRoute) {
+      console.log("✅ Allowing public route access");
       return NextResponse.next();
     }
 
-    // Redirect to sign in if not authenticated
-    if (!userId || !user) {
-      return redirectToSignIn({ returnBackUrl: req.url });
+    // Allow access to auth callback route
+    if (isAuthCallback) {
+      console.log("✅ Allowing auth route access");
+      return NextResponse.next();
     }
 
+    // If the user is not authenticated, redirect to sign-in
+    if (!auth.userId) {
+      console.log("🚫 User not authenticated, redirecting to sign-in");
+      return NextResponse.redirect(new URL("/sign-in", req.url));
+    }
+
+    // For protected routes, verify user and check permissions
     try {
-      // Special handling for super admin email
-      const primaryEmail = user.emailAddresses[0]?.emailAddress;
-      if (primaryEmail === SUPER_ADMIN_EMAIL) {
-        // If accessing admin routes, allow access
-        if (req.url.includes("/admin")) {
-          return NextResponse.next();
-        }
-        // If accessing other routes, redirect to admin dashboard
-        return NextResponse.redirect(new URL("/admin/dashboard", req.url));
+      // Fetch the complete user data from Clerk
+      const user = await clerkClient.users.getUser(auth.userId);
+      
+      if (!user) {
+        console.log("❌ User not found");
+        return NextResponse.redirect(new URL("/", req.url));
       }
 
-      // For non-super admin users, get user data
-      const userData = await convex.query(api.users.getUser, { userId });
+      // Get primary email
+      const primaryEmail = user.emailAddresses.find(
+        email => email.id === user.primaryEmailAddressId
+      )?.emailAddress?.toLowerCase();
 
-      // If user exists, handle routing based on role
-      if (userData) {
-        // Prevent access to admin routes for non-super admins
-        if (req.url.includes("/admin")) {
+      console.log("📧 User email:", primaryEmail);
+
+      // Check if user is trying to access admin routes
+      if (url.pathname.startsWith("/admin")) {
+        // Verify if user is a super admin
+        if (!primaryEmail || !SUPER_ADMINS.includes(primaryEmail)) {
+          console.log("🚫 User not authorized for admin access");
           return NextResponse.redirect(new URL("/", req.url));
         }
-
-        // Handle sign-in/sign-up redirects
-        if (req.url.includes("/sign-in") || req.url.includes("/sign-up")) {
-          switch (userData.role) {
-            case "org_admin":
-              return NextResponse.redirect(new URL(`/organizations/${userData.organizationId}`, req.url));
-            case "team_leader":
-            case "team_member":
-              return NextResponse.redirect(new URL("/teams", req.url));
-            default:
-              return NextResponse.redirect(new URL("/", req.url));
-          }
-        }
+        console.log("✅ Super admin access granted");
       }
-    } catch (error) {
-      console.error("Error in middleware:", error);
-      // On error, allow the request to continue to handle error states in the UI
-      return NextResponse.next();
-    }
 
-    return NextResponse.next();
+      return NextResponse.next();
+    } catch (error) {
+      console.log("🔥 Middleware error:", error);
+      return NextResponse.redirect(new URL("/", req.url));
+    }
   },
 });
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
-import { useAuth, useSession } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { redirect } from "next/navigation";
@@ -15,11 +15,11 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const { isSignedIn, userId } = useAuth();
-  const { session } = useSession();
+  const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
   const user = useQuery(api.users.getUser, { userId: userId ?? "" });
 
   // Handle loading state
-  if (!user || !session) {
+  if (!isUserLoaded || !user) {
     return (
       <div className="h-screen w-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -28,7 +28,8 @@ export default function AdminLayout({
   }
 
   // Redirect if not authenticated or not super admin
-  if (!isSignedIn || session.user.emailAddresses[0].emailAddress !== SUPER_ADMIN_EMAIL) {
+  const userEmail = clerkUser?.emailAddresses[0]?.emailAddress;
+  if (!isSignedIn || userEmail !== SUPER_ADMIN_EMAIL) {
     redirect("/");
   }
 

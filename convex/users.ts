@@ -5,49 +5,50 @@ import { Doc, Id } from "./_generated/dataModel";
 // Define the super admin email constant
 const SUPER_ADMIN_EMAIL = "kushtrim@promnestria.biz";
 
-// Helper function to check if user is super admin
-export const isSuperAdmin = async (db: any, userId: string) => {
-  const user = await db
-    .query("users")
-    .withIndex("by_userId", (q) => q.eq("userId", userId))
-    .first();
-  return user?.role === "super_admin";
-};
-
 export const getUser = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
     // Return null for empty userId
     if (!args.userId) return null;
 
+    // Check for existing user
     const user = await ctx.db
       .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .withIndex("by_clerk_id", (q) => q.eq("userId", args.userId))
       .first();
 
-    // If user doesn't exist but email is super admin, create super admin user
-    if (!user) {
-      const identity = await ctx.auth.getUserIdentity();
-      if (identity?.email === SUPER_ADMIN_EMAIL) {
-        const userData = {
-          userId: args.userId,
-          email: SUPER_ADMIN_EMAIL,
-          name: "Kushtrim Puka",
-          role: "super_admin" as const,
-          organizationId: "SYSTEM" as const,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        const id = await ctx.db.insert("users", userData);
-        return {
-          ...userData,
-          _id: id,
-          _creationTime: Date.now(),
-        };
-      }
+    return user;
+  },
+});
+
+export const ensureSuperAdmin = mutation({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity || identity.email !== SUPER_ADMIN_EMAIL) {
+      return null;
     }
 
-    return user;
+    // Check if super admin already exists
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("userId", args.userId))
+      .first();
+
+    if (existingUser) {
+      return existingUser._id;
+    }
+
+    // Create super admin user
+    return await ctx.db.insert("users", {
+      userId: args.userId,
+      email: SUPER_ADMIN_EMAIL,
+      name: "Kushtrim Puka",
+      role: "super_admin" as const,
+      organizationId: "SYSTEM" as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
   },
 });
 
@@ -63,38 +64,23 @@ export const createUser = mutation({
     // Check if user already exists
     const existingUser = await ctx.db
       .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .withIndex("by_clerk_id", (q) => q.eq("userId", args.userId))
       .first();
 
     if (existingUser) {
       return existingUser._id;
     }
 
-    // Handle super admin creation
-    if (args.email === SUPER_ADMIN_EMAIL) {
-      const userData = {
-        userId: args.userId,
-        email: args.email,
-        name: args.name,
-        role: "super_admin" as const,
-        organizationId: "SYSTEM" as const,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      return await ctx.db.insert("users", userData);
-    }
-
-    // For other users, create with provided role and organization
-    const userData = {
+    // Create new user
+    return await ctx.db.insert("users", {
       userId: args.userId,
       email: args.email,
       name: args.name,
-      role: args.role,
-      organizationId: args.organizationId,
+      role: args.email === SUPER_ADMIN_EMAIL ? "super_admin" : args.role,
+      organizationId: args.email === SUPER_ADMIN_EMAIL ? "SYSTEM" : args.organizationId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    };
-    return await ctx.db.insert("users", userData);
+    });
   },
 });
 
@@ -105,7 +91,7 @@ export const getAllUsers = query({
 
     const user = await ctx.db
       .query("users")
-      .withIndex("by_userId", (q) => q.eq("userId", identity.subject))
+      .withIndex("by_clerk_id", (q) => q.eq("userId", identity.subject))
       .first();
 
     if (!user || user.role !== "super_admin") {

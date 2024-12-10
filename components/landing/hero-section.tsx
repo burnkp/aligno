@@ -3,26 +3,54 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { useAuth, SignInButton } from "@clerk/nextjs";
-import { useQuery } from "convex/react";
+import { useAuth, SignInButton, useUser } from "@clerk/nextjs";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export function HeroSection() {
   const { isSignedIn, userId } = useAuth();
+  const { user: clerkUser } = useUser();
   const router = useRouter();
   const user = useQuery(api.users.getUser, { userId: userId ?? "" });
+  const ensureSuperAdmin = useMutation(api.users.ensureSuperAdmin);
 
-  const handleDashboardClick = () => {
-    if (!isSignedIn) return;
+  useEffect(() => {
+    const initializeUser = async () => {
+      if (isSignedIn && userId && !user && clerkUser?.emailAddresses[0]?.emailAddress === "kushtrim@promnestria.biz") {
+        try {
+          await ensureSuperAdmin({ userId });
+        } catch (error) {
+          console.error("Error creating super admin:", error);
+        }
+      }
+    };
 
-    // Redirect based on role
-    if (user?.role === "super_admin") {
-      router.push("/admin/dashboard");
-    } else if (user?.role === "org_admin") {
-      router.push(`/organizations/${user.organizationId}`);
-    } else if (user?.role === "team_leader" || user?.role === "team_member") {
-      router.push("/teams");
+    initializeUser();
+  }, [isSignedIn, userId, user, clerkUser, ensureSuperAdmin]);
+
+  const handleDashboardClick = async () => {
+    if (!isSignedIn || !userId) return;
+
+    try {
+      // Check if user is super admin by email
+      const userEmail = clerkUser?.emailAddresses[0]?.emailAddress;
+      if (userEmail === "kushtrim@promnestria.biz") {
+        router.push("/admin/dashboard");
+        return;
+      }
+
+      // For other users, check their role
+      if (user) {
+        if (user.role === "org_admin") {
+          router.push(`/organizations/${user.organizationId}`);
+        } else if (user.role === "team_leader" || user.role === "team_member") {
+          router.push("/teams");
+        }
+      }
+    } catch (error) {
+      console.error("Error navigating to dashboard:", error);
     }
   };
 
