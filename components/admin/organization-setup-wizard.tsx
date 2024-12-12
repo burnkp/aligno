@@ -129,8 +129,8 @@ export function OrganizationSetupWizard({
       onClose();
       setFormData(INITIAL_FORM_DATA);
       
-      // Redirect to welcome page
-      router.push(`/admin/organizations/${organizationId}/welcome`);
+      // For super admin, stay on the organizations page
+      router.refresh(); // Refresh the current page to show the new organization
     } catch (error) {
       console.error("Error creating organization:", error);
       toast({

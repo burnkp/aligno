@@ -1,10 +1,9 @@
 # Organization Creation Process
 
 ## Overview
-The organization creation process in Aligno is a multi-step wizard that handles:
-1. Organization details and subscription plan
-2. Admin user setup
-3. Initial settings configuration
+The organization creation process in Aligno has two distinct flows:
+1. **Super Admin Flow**: Manual organization creation through the admin dashboard
+2. **Self-Service Flow** (Planned): Organization self-registration through the landing page
 
 ## Implementation Details
 
@@ -14,6 +13,7 @@ The organization creation process in Aligno is a multi-step wizard that handles:
    - Handles the multi-step form process
    - Uses Convex mutations for data persistence
    - Generates unique user IDs for organization admins
+   - Different behavior for super admin vs self-service flow
 
 ### Database Schema
 ```typescript
@@ -48,6 +48,22 @@ users: defineTable({
 })
 ```
 
+### Creation Flows
+
+#### 1. Super Admin Flow (Current)
+- Access through admin dashboard
+- Uses organization setup wizard
+- Creates organization and admin user
+- Stays on organizations page after creation
+- No welcome page shown
+
+#### 2. Self-Service Flow (Planned)
+- Access through landing page "Get Started"
+- Uses same organization setup wizard
+- Creates organization and admin user
+- Redirects to welcome page
+- Shows onboarding steps
+
 ### Subscription Plans
 Currently, all subscription plans (Basic, Professional, and Enterprise) provide access to the full feature set:
 - Team creation and management
@@ -70,17 +86,6 @@ Future implementation will differentiate features based on subscription levels.
    - Manages their organization's settings
    - Can create teams and assign team leaders
 
-### Organization Creation Flow
-1. **Manual Creation (Current)**
-   - Super admin creates organizations through admin dashboard
-   - Uses multi-step wizard for organization setup
-   - Automatically creates org_admin user
-
-2. **Self-Service Creation (Planned)**
-   - Organizations will self-register through landing page
-   - "Get Started" flow will trigger organization creation
-   - Automated verification and setup process
-
 ### Error Handling
 1. Authentication Errors
    - Not authenticated
@@ -99,8 +104,8 @@ Future implementation will differentiate features based on subscription levels.
 4. ✅ Error handling
 5. ✅ Audit logging
 6. ✅ User creation with unique IDs
-7. ⏳ Email notifications
-8. ⏳ Welcome flow
+7. ✅ Proper flow routing
+8. ⏳ Email notifications
 
 ### Common Issues and Solutions
 
@@ -125,7 +130,7 @@ If user creation fails:
 
 ## Next Steps
 1. Implement email notifications
-2. Add welcome flow
-3. Configure subscription plan features
-4. Implement self-service registration
-5. Add organization verification process 
+2. Configure subscription plan features
+3. Implement self-service registration
+4. Add organization verification process
+5. Connect welcome page to self-service flow
