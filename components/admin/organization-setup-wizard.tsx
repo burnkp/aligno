@@ -109,8 +109,12 @@ export function OrganizationSetupWizard({
         },
       });
 
+      // Generate a unique userId for the admin user
+      const userId = `org_admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
       // Create admin user
       await createUser({
+        userId,
         name: formData.admin.name,
         email: formData.admin.email,
         role: "org_admin",
@@ -128,12 +132,12 @@ export function OrganizationSetupWizard({
       // Redirect to welcome page
       router.push(`/admin/organizations/${organizationId}/welcome`);
     } catch (error) {
+      console.error("Error creating organization:", error);
       toast({
         title: "Error",
-        description: "Failed to create organization",
+        description: error instanceof Error ? error.message : "Failed to create organization",
         variant: "destructive",
       });
-      console.error(error);
     } finally {
       setIsLoading(false);
     }
