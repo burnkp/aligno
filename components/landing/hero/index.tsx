@@ -1,157 +1,95 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { ArrowRight, PlayCircle } from "lucide-react";
-import { useAuth, SignInButton, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { SignInButton, useAuth } from "@clerk/nextjs";
 import Image from "next/image";
 
 export const Hero = () => {
-  const { isSignedIn, userId } = useAuth();
-  const { user: clerkUser } = useUser();
   const router = useRouter();
-  const user = useQuery(api.users.getUser, { userId: userId ?? "" });
-
-  const handleDashboardNavigation = async () => {
-    if (!isSignedIn || !userId) return;
-
-    try {
-      const userEmail = clerkUser?.emailAddresses[0]?.emailAddress;
-      if (userEmail === "kushtrim@promnestria.biz") {
-        router.push("/admin/dashboard");
-        return;
-      }
-
-      if (user) {
-        if (user.role === "org_admin") {
-          router.push(`/organizations/${user.organizationId}`);
-        } else if (user.role === "team_leader" || user.role === "team_member") {
-          router.push("/teams");
-        }
-      }
-    } catch (error) {
-      console.error("Error navigating to dashboard:", error);
-    }
-  };
-
-  const handleGetStarted = () => {
-    router.push("/get-started");
-  };
-
-  const handleWatchDemo = () => {
-    // Placeholder for future demo video functionality
-    // Will be connected to demo video link later
-    return;
-  };
+  const { isSignedIn } = useAuth();
 
   return (
-    <section className="relative min-h-[90vh] flex items-center pt-32 pb-20 overflow-hidden">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-hero-pattern" />
-      <div 
-        className="absolute inset-0 bg-[url('/grid.svg')] bg-center opacity-30"
-        style={{
-          maskImage: 'linear-gradient(to bottom, white, transparent)',
-          WebkitMaskImage: 'linear-gradient(to bottom, white, transparent)',
-        }}
-      />
+    <div className="relative min-h-screen flex flex-col items-center justify-center text-center px-6 md:px-10 py-24 overflow-hidden">
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-brand-purple-50/50 via-white to-blue-50/50 -z-10" />
       
-      {/* Gradient Orbs */}
-      <div className="absolute top-1/4 -left-64 w-96 h-96 bg-brand-purple-500/30 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-1/4 -right-64 w-96 h-96 bg-blue-500/30 rounded-full blur-3xl animate-pulse delay-1000" />
+      {/* Main content */}
+      <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-brand-purple-600 to-blue-600 bg-clip-text text-transparent mb-6 max-w-4xl animate-fade-in">
+        Transform Your Company&apos;s Performance
+      </h1>
       
-      <div className="container mx-auto px-6 relative">
-        <div className="max-w-4xl mx-auto text-center mb-20">
-          <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold mb-8 animate-fade-up">
-            <span className="inline-block bg-clip-text text-transparent bg-gradient-to-r from-brand-purple-600 via-brand-purple-500 to-blue-600">
-              Transform Your Company's Performance
-            </span>
-          </h1>
-          <p className="text-lg sm:text-xl md:text-2xl text-gray-600 mb-12 animate-fade-up" style={{ animationDelay: "0.2s" }}>
-            Align teams, track goals, and drive success with our innovative performance management platform.
-          </p>
-          
-          <div 
-            className="flex flex-col sm:flex-row justify-center gap-4 mb-12 animate-fade-up" 
-            style={{ animationDelay: "0.3s" }}
+      <p className="text-gray-600 text-lg md:text-xl mb-8 max-w-2xl animate-fade-in animation-delay-200">
+        Align teams, track goals, and drive success with our innovative performance management platform.
+      </p>
+      
+      <div className="flex flex-col sm:flex-row gap-4 mb-16 animate-fade-in animation-delay-400">
+        {isSignedIn ? (
+          <Button 
+            onClick={() => router.push("/dashboard")}
+            size="lg"
+            className="bg-brand-purple-600 hover:bg-brand-purple-700 text-white transition-colors duration-200"
           >
-            {isSignedIn ? (
-              <Button 
-                size="lg"
-                className="bg-brand-purple-600 hover:bg-brand-purple-700 text-white px-8 h-14 text-lg group shadow-lg shadow-brand-purple-500/25 hover:shadow-xl hover:shadow-brand-purple-500/30 transition-all duration-300"
-                onClick={handleDashboardNavigation}
-              >
-                Go to Dashboard
-                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-              </Button>
-            ) : (
-              <>
-                <Button 
-                  size="lg"
-                  className="bg-brand-purple-600 hover:bg-brand-purple-700 text-white px-8 h-14 text-lg group shadow-lg shadow-brand-purple-500/25 hover:shadow-xl hover:shadow-brand-purple-500/30 transition-all duration-300"
-                  onClick={handleGetStarted}
-                >
-                  Start Your Free Trial
-                  <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-                </Button>
-                <Button 
-                  size="lg"
-                  variant="outline"
-                  className="border-2 border-brand-purple-200 text-brand-purple-600 hover:bg-brand-purple-50 h-14 text-lg group transition-all duration-300"
-                  onClick={handleWatchDemo}
-                >
-                  <PlayCircle className="mr-2 h-5 w-5 transition-transform group-hover:scale-110" />
-                  Watch Demo
-                </Button>
-              </>
-            )}
-          </div>
-
-          {!isSignedIn && (
-            <div 
-              className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-8 text-sm text-gray-600 animate-fade-up" 
-              style={{ animationDelay: "0.4s" }}
+            Go to Dashboard
+          </Button>
+        ) : (
+          <>
+            <Button 
+              onClick={() => router.push("/get-started")}
+              size="lg"
+              className="bg-brand-purple-600 hover:bg-brand-purple-700 text-white transition-colors duration-200"
             >
-              <div className="flex items-center gap-2 group">
-                <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current text-brand-purple-600 transition-transform group-hover:scale-110">
-                  <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm-.997-4L6.76 11.757l1.414-1.414 2.829 2.829 5.656-5.657 1.415 1.414L11.003 16z" />
-                </svg>
-                <span className="group-hover:text-brand-purple-600 transition-colors">14-day free trial</span>
-              </div>
-              <div className="flex items-center gap-2 group">
-                <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current text-brand-purple-600 transition-transform group-hover:scale-110">
-                  <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm-.997-4L6.76 11.757l1.414-1.414 2.829 2.829 5.656-5.657 1.415 1.414L11.003 16z" />
-                </svg>
-                <span className="group-hover:text-brand-purple-600 transition-colors">No credit card required</span>
-              </div>
-              <div className="flex items-center gap-2 group">
-                <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current text-brand-purple-600 transition-transform group-hover:scale-110">
-                  <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm0-2a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm-.997-4L6.76 11.757l1.414-1.414 2.829 2.829 5.656-5.657 1.415 1.414L11.003 16z" />
-                </svg>
-                <span className="group-hover:text-brand-purple-600 transition-colors">Cancel anytime</span>
-              </div>
-            </div>
-          )}
-        </div>
+              Start Free Trial
+            </Button>
+            <SignInButton mode="modal">
+              <Button 
+                variant="outline" 
+                size="lg"
+                className="border-gray-200 hover:border-brand-purple-600 hover:text-brand-purple-600 transition-colors duration-200"
+              >
+                Sign In
+              </Button>
+            </SignInButton>
+          </>
+        )}
+      </div>
 
-        {/* Social Proof */}
-        <div className="max-w-6xl mx-auto">
-          <p className="text-center text-sm text-gray-500 mb-8 animate-fade-up" style={{ animationDelay: "0.5s" }}>
-            Trusted by leading companies worldwide
-          </p>
-          <div 
-            className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center justify-items-center opacity-50 hover:opacity-75 transition-opacity duration-300 animate-fade-up" 
-            style={{ animationDelay: "0.6s" }}
-          >
-            <Image src="/logos/amazon.svg" alt="Amazon" width={120} height={32} className="h-8 w-auto grayscale hover:grayscale-0 transition-all duration-300" />
-            <Image src="/logos/google.svg" alt="Google" width={120} height={32} className="h-8 w-auto grayscale hover:grayscale-0 transition-all duration-300" />
-            <Image src="/logos/netflix.svg" alt="Netflix" width={120} height={32} className="h-8 w-auto grayscale hover:grayscale-0 transition-all duration-300" />
-            <Image src="/logos/ibm.svg" alt="IBM" width={120} height={32} className="h-8 w-auto grayscale hover:grayscale-0 transition-all duration-300" />
-          </div>
+      {/* Social proof section */}
+      <div className="animate-fade-in animation-delay-600">
+        <p className="text-gray-500 mb-6">
+          Trusted by leading companies worldwide
+        </p>
+        <div className="flex flex-wrap justify-center items-center gap-8 md:gap-12">
+          <Image 
+            src="/assets/companies/google.svg" 
+            alt="Google" 
+            width={100} 
+            height={40} 
+            className="h-8 w-auto grayscale opacity-70 hover:opacity-100 transition-opacity"
+          />
+          <Image 
+            src="/assets/companies/amazon.svg" 
+            alt="Amazon" 
+            width={100} 
+            height={40} 
+            className="h-8 w-auto grayscale opacity-70 hover:opacity-100 transition-opacity"
+          />
+          <Image 
+            src="/assets/companies/netflix.svg" 
+            alt="Netflix" 
+            width={90} 
+            height={40} 
+            className="h-8 w-auto grayscale opacity-70 hover:opacity-100 transition-opacity"
+          />
+          <Image 
+            src="/assets/companies/ibm.svg" 
+            alt="IBM" 
+            width={90} 
+            height={40} 
+            className="h-8 w-auto grayscale opacity-70 hover:opacity-100 transition-opacity"
+          />
         </div>
       </div>
-    </section>
+    </div>
   );
 }; 

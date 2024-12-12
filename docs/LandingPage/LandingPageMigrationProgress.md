@@ -271,3 +271,32 @@
    - Demo video integration
    - Payment system setup
    - Additional optimizations based on usage data
+
+## Recent Updates
+
+### Navigation Changes
+✅ Completed
+- [x] Removed FAQ link from both desktop and mobile navigation
+- [x] Added Aligno icon to navbar logo
+  - [x] Sized to match text height
+  - [x] Proper spacing with brand text
+  - [x] Maintains responsive design
+
+### Asset Updates
+✅ Completed
+- [x] Company Logos
+  - [x] Updated paths to use correct asset locations
+  - [x] Fixed loading from `/docs/LandingPage/assets/logos`
+  - [x] Maintained hover and animation effects
+- [x] Brand Icon
+  - [x] Added Aligno icon from `/docs/LandingPage/assets/icons`
+  - [x] Proper sizing and alignment
+  - [x] Responsive scaling
+
+### Verification
+✅ Completed
+- [x] Navigation remains functional
+- [x] Company logos load correctly
+- [x] Brand icon displays properly
+- [x] All styling and animations maintained
+- [x] Responsive design unaffected

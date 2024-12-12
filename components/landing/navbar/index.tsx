@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Link from "next/link";
+import Image from "next/image";
 import { Menu } from "lucide-react";
 import {
   Sheet,
@@ -62,7 +63,15 @@ export const Navbar = () => {
     >
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center">
+          <Link href="/" className="flex items-center gap-2">
+            <Image 
+              src="/assets/icons/Aligno Icon.png" 
+              alt="Aligno Icon" 
+              width={28} 
+              height={28} 
+              className="h-7 w-auto" 
+              priority
+            />
             <span className="text-2xl font-bold bg-gradient-to-r from-brand-purple-600 to-blue-600 bg-clip-text text-transparent hover:opacity-90 transition-opacity">
               Aligno
             </span>
@@ -87,12 +96,6 @@ export const Navbar = () => {
               className="text-gray-600 hover:text-brand-purple-600 transition-colors duration-200"
             >
               Pricing
-            </a>
-            <a 
-              href="#faq" 
-              className="text-gray-600 hover:text-brand-purple-600 transition-colors duration-200"
-            >
-              FAQ
             </a>
           </div>
 
@@ -159,12 +162,6 @@ export const Navbar = () => {
                     className="text-lg text-gray-600 hover:text-brand-purple-600 transition-colors duration-200"
                   >
                     Pricing
-                  </a>
-                  <a 
-                    href="#faq" 
-                    className="text-lg text-gray-600 hover:text-brand-purple-600 transition-colors duration-200"
-                  >
-                    FAQ
                   </a>
                   
                   <div className="flex flex-col gap-4 mt-4">
