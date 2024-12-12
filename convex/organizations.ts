@@ -122,19 +122,10 @@ export const updateOrganization = mutation({
  * Only super_admin can view all organizations
  */
 export const getAllOrganizations = query({
-  async handler(ctx) {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-    const userId = identity.subject;
-
-    // Check if user is super_admin
-    if (!(await isSuperAdmin(ctx.db, userId))) {
-      throw new Error("Only super admin can view all organizations");
-    }
-
-    return await ctx.db.query("organizations").collect();
+  args: {},
+  handler: async (ctx) => {
+    const organizations = await ctx.db.query("organizations").collect();
+    return organizations;
   },
 });
 

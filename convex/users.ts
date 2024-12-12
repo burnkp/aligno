@@ -85,19 +85,9 @@ export const createUser = mutation({
 });
 
 export const getAllUsers = query({
+  args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("userId", identity.subject))
-      .first();
-
-    if (!user || user.role !== "super_admin") {
-      throw new Error("Not authorized");
-    }
-
-    return await ctx.db.query("users").collect();
+    const users = await ctx.db.query("users").collect();
+    return users;
   },
 }); 
