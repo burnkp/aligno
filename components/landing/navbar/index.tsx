@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth, SignInButton, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
@@ -18,19 +19,27 @@ export const Navbar = () => {
   const { user: clerkUser } = useUser();
   const router = useRouter();
   const user = useQuery(api.users.getUser, { userId: userId ?? "" });
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleNavigation = () => {
     if (!isSignedIn || !userId) return;
 
     try {
-      // Check if user is super admin by email
       const userEmail = clerkUser?.emailAddresses[0]?.emailAddress;
       if (userEmail === "kushtrim@promnestria.biz") {
         router.push("/admin/dashboard");
         return;
       }
 
-      // For other users, check their role
       if (user) {
         if (user.role === "org_admin") {
           router.push(`/organizations/${user.organizationId}`);
@@ -44,21 +53,47 @@ export const Navbar = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200">
+    <nav 
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        scrolled 
+          ? "bg-white/80 backdrop-blur-lg shadow-sm" 
+          : "bg-transparent"
+      }`}
+    >
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center">
-            <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+            <span className="text-2xl font-bold bg-gradient-to-r from-brand-purple-600 to-blue-600 bg-clip-text text-transparent hover:opacity-90 transition-opacity">
               Aligno
             </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8 text-sm text-gray-600">
-            <a href="#features" className="hover:text-gray-900 transition-colors">Features</a>
-            <a href="#how-it-works" className="hover:text-gray-900 transition-colors">How it Works</a>
-            <a href="#pricing" className="hover:text-gray-900 transition-colors">Pricing</a>
-            <a href="#faq" className="hover:text-gray-900 transition-colors">FAQ</a>
+          <div className="hidden md:flex items-center gap-8 text-sm">
+            <a 
+              href="#features" 
+              className="text-gray-600 hover:text-brand-purple-600 transition-colors duration-200"
+            >
+              Features
+            </a>
+            <a 
+              href="#how-it-works" 
+              className="text-gray-600 hover:text-brand-purple-600 transition-colors duration-200"
+            >
+              How it Works
+            </a>
+            <a 
+              href="#pricing" 
+              className="text-gray-600 hover:text-brand-purple-600 transition-colors duration-200"
+            >
+              Pricing
+            </a>
+            <a 
+              href="#faq" 
+              className="text-gray-600 hover:text-brand-purple-600 transition-colors duration-200"
+            >
+              FAQ
+            </a>
           </div>
 
           {/* Desktop Auth Buttons */}
@@ -66,19 +101,22 @@ export const Navbar = () => {
             {isSignedIn ? (
               <Button 
                 onClick={handleNavigation}
-                className="bg-purple-600 hover:bg-purple-700 text-white"
+                className="bg-brand-purple-600 hover:bg-brand-purple-700 text-white transition-colors duration-200"
               >
                 Go to Dashboard
               </Button>
             ) : (
               <>
                 <SignInButton mode="modal">
-                  <Button variant="ghost" className="text-gray-600 hover:text-gray-900">
+                  <Button 
+                    variant="ghost" 
+                    className="text-gray-600 hover:text-brand-purple-600 hover:bg-brand-purple-50 transition-all duration-200"
+                  >
                     Sign In
                   </Button>
                 </SignInButton>
                 <Button 
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                  className="bg-brand-purple-600 hover:bg-brand-purple-700 text-white transition-colors duration-200"
                   onClick={() => router.push("/get-started")}
                 >
                   Start Free
@@ -91,34 +129,64 @@ export const Navbar = () => {
           <div className="md:hidden">
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Menu className="h-6 w-6" />
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="hover:bg-brand-purple-50 transition-colors duration-200"
+                >
+                  <Menu className="h-6 w-6 text-gray-600" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right">
+              <SheetContent 
+                side="right"
+                className="w-[300px] sm:w-[400px] border-l border-gray-100"
+              >
                 <div className="flex flex-col gap-6 mt-8">
-                  <a href="#features" className="text-lg hover:text-gray-900 transition-colors">Features</a>
-                  <a href="#how-it-works" className="text-lg hover:text-gray-900 transition-colors">How it Works</a>
-                  <a href="#pricing" className="text-lg hover:text-gray-900 transition-colors">Pricing</a>
-                  <a href="#faq" className="text-lg hover:text-gray-900 transition-colors">FAQ</a>
+                  <a 
+                    href="#features" 
+                    className="text-lg text-gray-600 hover:text-brand-purple-600 transition-colors duration-200"
+                  >
+                    Features
+                  </a>
+                  <a 
+                    href="#how-it-works" 
+                    className="text-lg text-gray-600 hover:text-brand-purple-600 transition-colors duration-200"
+                  >
+                    How it Works
+                  </a>
+                  <a 
+                    href="#pricing" 
+                    className="text-lg text-gray-600 hover:text-brand-purple-600 transition-colors duration-200"
+                  >
+                    Pricing
+                  </a>
+                  <a 
+                    href="#faq" 
+                    className="text-lg text-gray-600 hover:text-brand-purple-600 transition-colors duration-200"
+                  >
+                    FAQ
+                  </a>
                   
                   <div className="flex flex-col gap-4 mt-4">
                     {isSignedIn ? (
                       <Button 
                         onClick={handleNavigation}
-                        className="bg-purple-600 hover:bg-purple-700 text-white w-full"
+                        className="bg-brand-purple-600 hover:bg-brand-purple-700 text-white w-full transition-colors duration-200"
                       >
                         Go to Dashboard
                       </Button>
                     ) : (
                       <>
                         <SignInButton mode="modal">
-                          <Button variant="ghost" className="text-gray-600 hover:text-gray-900 w-full">
+                          <Button 
+                            variant="ghost" 
+                            className="text-gray-600 hover:text-brand-purple-600 hover:bg-brand-purple-50 w-full transition-all duration-200"
+                          >
                             Sign In
                           </Button>
                         </SignInButton>
                         <Button 
-                          className="bg-purple-600 hover:bg-purple-700 text-white w-full"
+                          className="bg-brand-purple-600 hover:bg-brand-purple-700 text-white w-full transition-colors duration-200"
                           onClick={() => router.push("/get-started")}
                         >
                           Start Free
