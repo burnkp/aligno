@@ -306,3 +306,15 @@ export const removeMember = mutation({
     return true;
   },
 });
+
+/**
+ * Get all teams
+ * Only super_admin can view all teams
+ */
+export const getAllTeams = query({
+  args: {},
+  handler: async (ctx) => {
+    const teams = await ctx.db.query("teams").collect();
+    return teams;
+  },
+});

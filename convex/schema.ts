@@ -44,7 +44,8 @@ export default defineSchema({
     updatedAt: v.string(),
   })
     .index("by_clerk_id", ["userId"])
-    .index("by_email", ["email"]),
+    .index("by_email", ["email"])
+    .index("by_organization", ["organizationId"]),
 
   // Teams table - Stores team data with organization mapping
   teams: defineTable({
