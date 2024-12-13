@@ -318,3 +318,49 @@ export const getAllTeams = query({
     return teams;
   },
 });
+
+/**
+ * Get teams for the authenticated user
+ */
+export const getTeams = query({
+  args: {},
+  async handler(ctx) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const userId = identity.subject;
+
+    // Get user's organization
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) throw new Error("User not found");
+
+    // Get teams based on user's role and organization
+    const isSuperAdminUser = await isSuperAdmin(ctx.db, userId);
+    const isOrgAdminUser = await isOrgAdmin(ctx.db, userId, user.organizationId);
+
+    if (isSuperAdminUser) {
+      // Super admin can see all teams
+      return await ctx.db.query("teams").collect();
+    } else if (isOrgAdminUser) {
+      // Org admin can see all teams in their organization
+      return await ctx.db
+        .query("teams")
+        .withIndex("by_organization", (q) => q.eq("organizationId", user.organizationId))
+        .collect();
+    } else {
+      // Regular users can only see teams they're members of
+      const allTeams = await ctx.db
+        .query("teams")
+        .withIndex("by_organization", (q) => q.eq("organizationId", user.organizationId))
+        .collect();
+
+      return allTeams.filter(team => 
+        team.members.some(member => member.userId === userId)
+      );
+    }
+  },
+});
