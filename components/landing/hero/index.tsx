@@ -2,12 +2,77 @@
 
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import { SignInButton, useAuth } from "@clerk/nextjs";
+import { SignInButton, useAuth, useUser } from "@clerk/nextjs";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import Image from "next/image";
+import Link from "next/link";
 
 export const Hero = () => {
   const router = useRouter();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, userId, isLoaded } = useAuth();
+  const { user: clerkUser } = useUser();
+  const user = useQuery(api.users.getUser, { userId: userId ?? "" });
+
+  const handleDashboardNavigation = () => {
+    if (!isSignedIn || !userId) return;
+
+    try {
+      const userEmail = clerkUser?.emailAddresses[0]?.emailAddress;
+      if (userEmail === "kushtrim@promnestria.biz") {
+        router.push("/admin/dashboard");
+        return;
+      }
+
+      if (user) {
+        if (user.role === "org_admin") {
+          router.push(`/organizations/${user.organizationId}`);
+        } else if (user.role === "team_leader" || user.role === "team_member") {
+          router.push("/teams");
+        }
+      }
+    } catch (error) {
+      console.error("Error navigating to dashboard:", error);
+    }
+  };
+
+  const renderAuthButtons = () => {
+    if (!isLoaded) return null;
+
+    if (isSignedIn) {
+      return (
+        <Button 
+          onClick={handleDashboardNavigation}
+          size="lg"
+          className="bg-brand-purple-600 hover:bg-brand-purple-700 text-white transition-colors duration-200"
+        >
+          Go to Dashboard
+        </Button>
+      );
+    }
+
+    return (
+      <>
+        <Link href="/get-started">
+          <Button 
+            size="lg"
+            className="bg-brand-purple-600 hover:bg-brand-purple-700 text-white transition-colors duration-200"
+          >
+            Start Free Trial
+          </Button>
+        </Link>
+        <SignInButton mode="modal">
+          <Button 
+            variant="outline" 
+            size="lg"
+            className="border-gray-200 hover:border-brand-purple-600 hover:text-brand-purple-600 transition-colors duration-200"
+          >
+            Sign In
+          </Button>
+        </SignInButton>
+      </>
+    );
+  };
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center text-center px-6 md:px-10 py-24 overflow-hidden">
@@ -24,34 +89,7 @@ export const Hero = () => {
       </p>
       
       <div className="flex flex-col sm:flex-row gap-4 mb-16 animate-fade-in animation-delay-400">
-        {isSignedIn ? (
-          <Button 
-            onClick={() => router.push("/dashboard")}
-            size="lg"
-            className="bg-brand-purple-600 hover:bg-brand-purple-700 text-white transition-colors duration-200"
-          >
-            Go to Dashboard
-          </Button>
-        ) : (
-          <>
-            <Button 
-              onClick={() => router.push("/get-started")}
-              size="lg"
-              className="bg-brand-purple-600 hover:bg-brand-purple-700 text-white transition-colors duration-200"
-            >
-              Start Free Trial
-            </Button>
-            <SignInButton mode="modal">
-              <Button 
-                variant="outline" 
-                size="lg"
-                className="border-gray-200 hover:border-brand-purple-600 hover:text-brand-purple-600 transition-colors duration-200"
-              >
-                Sign In
-              </Button>
-            </SignInButton>
-          </>
-        )}
+        {renderAuthButtons()}
       </div>
 
       {/* Social proof section */}

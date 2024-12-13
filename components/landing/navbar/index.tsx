@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useAuth, SignInButton, useUser } from "@clerk/nextjs";
+import { useAuth, SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -16,9 +16,9 @@ import {
 } from "@/components/ui/sheet";
 
 export const Navbar = () => {
-  const { isSignedIn, userId } = useAuth();
-  const { user: clerkUser } = useUser();
   const router = useRouter();
+  const { isSignedIn, userId, isLoaded } = useAuth();
+  const { user: clerkUser } = useUser();
   const user = useQuery(api.users.getUser, { userId: userId ?? "" });
   const [scrolled, setScrolled] = useState(false);
 
@@ -51,6 +51,51 @@ export const Navbar = () => {
     } catch (error) {
       console.error("Error navigating to dashboard:", error);
     }
+  };
+
+  const renderAuthButtons = () => {
+    if (!isLoaded) return null;
+
+    if (isSignedIn) {
+      return (
+        <>
+          <Button 
+            onClick={handleNavigation}
+            className="bg-brand-purple-600 hover:bg-brand-purple-700 text-white transition-colors duration-200"
+          >
+            Go to Dashboard
+          </Button>
+          <SignOutButton>
+            <Button 
+              variant="ghost" 
+              className="text-gray-600 hover:text-brand-purple-600 hover:bg-brand-purple-50 transition-all duration-200"
+            >
+              Sign Out
+            </Button>
+          </SignOutButton>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <SignInButton mode="modal">
+          <Button 
+            variant="ghost" 
+            className="text-gray-600 hover:text-brand-purple-600 hover:bg-brand-purple-50 transition-all duration-200"
+          >
+            Sign In
+          </Button>
+        </SignInButton>
+        <Link href="/get-started">
+          <Button 
+            className="bg-brand-purple-600 hover:bg-brand-purple-700 text-white transition-colors duration-200"
+          >
+            Start Free
+          </Button>
+        </Link>
+      </>
+    );
   };
 
   return (
@@ -101,31 +146,7 @@ export const Navbar = () => {
 
           {/* Desktop Auth Buttons */}
           <div className="hidden md:flex items-center gap-4">
-            {isSignedIn ? (
-              <Button 
-                onClick={handleNavigation}
-                className="bg-brand-purple-600 hover:bg-brand-purple-700 text-white transition-colors duration-200"
-              >
-                Go to Dashboard
-              </Button>
-            ) : (
-              <>
-                <SignInButton mode="modal">
-                  <Button 
-                    variant="ghost" 
-                    className="text-gray-600 hover:text-brand-purple-600 hover:bg-brand-purple-50 transition-all duration-200"
-                  >
-                    Sign In
-                  </Button>
-                </SignInButton>
-                <Button 
-                  className="bg-brand-purple-600 hover:bg-brand-purple-700 text-white transition-colors duration-200"
-                  onClick={() => router.push("/get-started")}
-                >
-                  Start Free
-                </Button>
-              </>
-            )}
+            {renderAuthButtons()}
           </div>
 
           {/* Mobile Menu */}
@@ -165,31 +186,7 @@ export const Navbar = () => {
                   </a>
                   
                   <div className="flex flex-col gap-4 mt-4">
-                    {isSignedIn ? (
-                      <Button 
-                        onClick={handleNavigation}
-                        className="bg-brand-purple-600 hover:bg-brand-purple-700 text-white w-full transition-colors duration-200"
-                      >
-                        Go to Dashboard
-                      </Button>
-                    ) : (
-                      <>
-                        <SignInButton mode="modal">
-                          <Button 
-                            variant="ghost" 
-                            className="text-gray-600 hover:text-brand-purple-600 hover:bg-brand-purple-50 w-full transition-all duration-200"
-                          >
-                            Sign In
-                          </Button>
-                        </SignInButton>
-                        <Button 
-                          className="bg-brand-purple-600 hover:bg-brand-purple-700 text-white w-full transition-colors duration-200"
-                          onClick={() => router.push("/get-started")}
-                        >
-                          Start Free
-                        </Button>
-                      </>
-                    )}
+                    {renderAuthButtons()}
                   </div>
                 </div>
               </SheetContent>
