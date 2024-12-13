@@ -6,11 +6,11 @@ The landing page serves as the main entry point for Aligno, featuring a modern a
 ## Authentication Flow
 
 ### Non-authenticated Users
-- Can view the landing page
+- Can view the landing page and `/get-started` page
 - Have access to:
   - "Sign In" button in navbar (triggers Clerk authentication modal)
-  - "Start Free" button in navbar (routes to `/get-started`)
-  - "Start Free Trial" button in hero section (routes to `/get-started`)
+  - "Start Free" button in navbar (direct route to `/get-started` using Next.js Link)
+  - "Start Free Trial" button in hero section (direct route to `/get-started` using Next.js Link)
 - No access to protected routes or dashboard features
 - All auth-related buttons have smooth transitions and no flashing states
 
@@ -19,9 +19,37 @@ The landing page serves as the main entry point for Aligno, featuring a modern a
   - "Go to Dashboard" button (replaces "Start Free" and "Start Free Trial")
   - "Sign Out" button (replaces "Sign In")
 - Automatic role-based routing from dashboard button:
-  - Super Admin → `/admin/dashboard`
+  - Super Admin (kushtrim@promnestria.biz) → `/admin/dashboard`
   - Organization Admin → `/organizations/{orgId}`
   - Team Leader/Member → `/teams`
+
+## Route Protection
+
+### Public Routes
+The following routes are accessible without authentication:
+- `/` - Landing page
+- `/get-started` - Organization setup page
+- `/sign-in` - Authentication page
+- `/sign-up` - Registration page
+
+### Protected Routes
+- All other routes require authentication
+- Super admin routes (`/admin/*`) require additional email verification
+- Unauthorized access attempts are redirected to appropriate pages
+
+### Middleware Implementation
+```typescript
+// Key middleware features
+{
+  publicRoutes: ["/", "/get-started", "/sign-in", "/sign-up"],
+  afterAuth: async (auth, req) => {
+    // Public route access
+    // Super admin verification
+    // Role-based routing
+    // Error handling
+  }
+}
+```
 
 ## Components Breakdown
 
@@ -41,7 +69,7 @@ The landing page serves as the main entry point for Aligno, featuring a modern a
 - Authentication-aware buttons:
   - Non-authenticated:
     - "Sign In" → Opens Clerk modal
-    - "Start Free" → Routes to `/get-started`
+    - "Start Free" → Direct route to `/get-started` using Next.js Link
   - Authenticated:
     - "Go to Dashboard" → Role-based routing
     - "Sign Out" → Clerk sign out
@@ -51,20 +79,12 @@ The landing page serves as the main entry point for Aligno, featuring a modern a
 - Main welcome component with CTAs
 - Authentication-aware buttons:
   - Non-authenticated:
-    - "Start Free Trial" → Routes to `/get-started`
+    - "Start Free Trial" → Direct route to `/get-started` using Next.js Link
     - "Sign In" → Opens Clerk modal
   - Authenticated:
     - Single "Go to Dashboard" button with role-based routing
 - Social proof section with company logos
 - Smooth transitions and loading states
-
-### 4. Features Section (`components/landing/features-section.tsx`)
-- Showcases key platform features
-- Grid layout with 6 feature cards
-- Each card includes:
-  - Icon
-  - Title
-  - Description
 
 ## Technical Implementation
 
@@ -75,7 +95,8 @@ The landing page serves as the main entry point for Aligno, featuring a modern a
 - Smooth loading states and transitions
 
 ### Role-based Routing
-- Super Admin detection via email
+- Super Admin detection via email (kushtrim@promnestria.biz)
+- Automatic redirection from `/dashboard` to `/admin/dashboard` for super admin
 - Organization Admin routing with organization context
 - Team Leader/Member routing to team dashboard
 
@@ -86,6 +107,32 @@ The landing page serves as the main entry point for Aligno, featuring a modern a
 - Efficient routing with Next.js App Router
 - Smooth transitions for auth state changes
 
+## Recent Fixes and Improvements
+
+### 1. Middleware Configuration
+- Fixed public routes pattern to use exact paths instead of wildcards
+- Added `/get-started` to public routes
+- Improved route protection logic
+- Enhanced super admin redirection handling
+
+### 2. Button Navigation
+- Updated Start Free buttons to use Next.js Link for client-side routing
+- Removed CLERK triggers from non-auth buttons
+- Maintained proper auth flow for Sign In button
+- Fixed navigation paths and redirects
+
+### 3. Authentication Flow
+- Improved super admin detection and routing
+- Enhanced error handling in middleware
+- Added proper logging for debugging
+- Fixed authentication state management
+
+### 4. Documentation Updates
+- Added comprehensive route protection documentation
+- Updated component behavior descriptions
+- Added recent fixes and improvements section
+- Enhanced technical implementation details
+
 ## Integration Points
 
 ### Authentication (Clerk)
@@ -94,6 +141,7 @@ The landing page serves as the main entry point for Aligno, featuring a modern a
 - Role-based access control
 - Sign-out functionality
 - Smooth loading states
+- Super admin redirection handling
 
 ### Database (Convex)
 - User data management

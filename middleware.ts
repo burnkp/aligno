@@ -2,49 +2,29 @@ import { authMiddleware, clerkClient } from "@clerk/nextjs";
 import { NextResponse } from "next/server";
 import { SUPER_ADMINS } from "@/config/auth";
 
-// Define public routes that don't require authentication
-const publicRoutes = ["/", "/sign-in*", "/sign-up*"];
-
-// Define auth routes that are part of the authentication flow
-const authRoutes = ["/auth-callback"];
-
 export default authMiddleware({
   debug: true,
+  publicRoutes: [
+    "/",
+    "/get-started",
+    "/sign-in",
+    "/sign-up"
+  ],
   async afterAuth(auth, req) {
     console.log("⭐️ Middleware executing for:", req.url);
 
-    // Check if the route is public, auth-related, or requires authentication
     const url = new URL(req.url);
-    const isPublicRoute = publicRoutes.some(pattern => {
-      if (pattern.endsWith("*")) {
-        return url.pathname.startsWith(pattern.slice(0, -1));
-      }
-      return url.pathname === pattern;
-    });
-    const isAuthRoute = authRoutes.includes(url.pathname);
-    const isAuthCallback = url.pathname === "/auth-callback";
-
     console.log("🔍 Route check:", {
       path: url.pathname,
-      isPublicRoute,
-      isAuthRoute,
-      isAuthCallback,
     });
 
-    // Allow access to public routes
-    if (isPublicRoute) {
-      console.log("✅ Allowing public route access");
-      return NextResponse.next();
-    }
-
-    // Allow access to auth callback route
-    if (isAuthCallback) {
-      console.log("✅ Allowing auth route access");
-      return NextResponse.next();
-    }
-
-    // If the user is not authenticated, redirect to sign-in
+    // If the user is not authenticated, allow them to access public routes
     if (!auth.userId) {
+      const isPublicRoute = ["/", "/get-started", "/sign-in", "/sign-up"].includes(url.pathname);
+      if (isPublicRoute) {
+        console.log("✅ Allowing public route access");
+        return NextResponse.next();
+      }
       console.log("🚫 User not authenticated, redirecting to sign-in");
       return NextResponse.redirect(new URL("/sign-in", req.url));
     }
@@ -74,6 +54,12 @@ export default authMiddleware({
           return NextResponse.redirect(new URL("/", req.url));
         }
         console.log("✅ Super admin access granted");
+      }
+
+      // Handle super admin redirection after sign-in
+      if (primaryEmail && SUPER_ADMINS.includes(primaryEmail) && url.pathname === "/dashboard") {
+        console.log("🔄 Redirecting super admin to admin dashboard");
+        return NextResponse.redirect(new URL("/admin/dashboard", req.url));
       }
 
       return NextResponse.next();

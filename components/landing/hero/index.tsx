@@ -53,12 +53,13 @@ export const Hero = () => {
 
     return (
       <>
-        <Link href="/get-started">
+        <Link href="/get-started" passHref>
           <Button 
             size="lg"
             className="bg-brand-purple-600 hover:bg-brand-purple-700 text-white transition-colors duration-200"
+            asChild
           >
-            Start Free Trial
+            <span>Start Free Trial</span>
           </Button>
         </Link>
         <SignInButton mode="modal">

@@ -87,11 +87,12 @@ export const Navbar = () => {
             Sign In
           </Button>
         </SignInButton>
-        <Link href="/get-started">
+        <Link href="/get-started" passHref>
           <Button 
             className="bg-brand-purple-600 hover:bg-brand-purple-700 text-white transition-colors duration-200"
+            asChild
           >
-            Start Free
+            <span>Start Free</span>
           </Button>
         </Link>
       </>

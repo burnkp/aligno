@@ -9,6 +9,7 @@ The RBAC system in Aligno provides granular control over user permissions and ac
 - Super admin email is defined in `config/auth.ts` as part of `SUPER_ADMINS` array
 - Supports multiple super admin emails if needed
 - All email addresses are stored in lowercase for consistency
+- Current super admin: kushtrim@promnestria.biz
 
 ### Database Schema
 ```typescript
@@ -40,16 +41,24 @@ users: defineTable({
    - Allows/denies access based on role
 4. For public routes:
    - Allows access without verification
-5. For auth callback:
-   - Creates super admin user if needed
-   - Sets up initial permissions
-   - Redirects to appropriate dashboard
+5. For super admin:
+   - Verifies email against SUPER_ADMINS list
+   - Redirects `/dashboard` to `/admin/dashboard`
+   - Protects all `/admin/*` routes
 
-### Route Protection
-- Public routes: ["/", "/sign-in*", "/sign-up*"]
-- Auth routes: ["/auth-callback"]
-- Admin routes: "/admin/*"
-- Protected routes: Everything else
+### Route Access Control
+- Public routes: Accessible without authentication
+  - Landing page: `/`
+  - Get Started: `/get-started`
+  - Authentication: `/sign-in`, `/sign-up`
+- Protected routes: Require authentication
+  - Admin routes: `/admin/*` (super admin only)
+  - Organization routes: `/organizations/*`
+  - Team routes: `/teams/*`
+- Redirection rules:
+  - Unauthenticated users → `/sign-in`
+  - Unauthorized admin access → `/`
+  - Super admin at `/dashboard` → `/admin/dashboard`
 
 ### Middleware Implementation
 ```typescript
