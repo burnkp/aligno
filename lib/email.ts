@@ -20,10 +20,11 @@ export async function sendWelcomeEmail({
   }
 
   try {
-    const signInUrl = new URL('/sign-in', process.env.NEXT_PUBLIC_APP_URL);
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
+    const signInUrl = new URL('/sign-in', baseUrl);
     signInUrl.searchParams.set('redirect_url', '/auth/setup');
-    signInUrl.searchParams.set('email', email);
-    signInUrl.searchParams.set('orgName', orgName);
+    signInUrl.searchParams.set('email', email.toLowerCase());
+    signInUrl.searchParams.set('orgName', encodeURIComponent(orgName));
 
     const data = await resend.emails.send({
       from: 'Aligno <onboarding@resend.dev>',
@@ -36,27 +37,22 @@ export async function sendWelcomeEmail({
       }),
     });
 
-    console.log('Resend API response:', data);
-
-    if (!data) {
-      throw new Error('No response from Resend API');
-    }
-
-    if ('error' in data) {
-      throw new Error(data.error?.message || 'Failed to send email');
-    }
-
     if (!data.id) {
-      throw new Error('Invalid response from Resend API: Missing email ID');
+      throw new Error('Failed to send email');
     }
+
+    console.log('Email sent successfully:', {
+      emailId: data.id,
+      to: email,
+      setupUrl: signInUrl.toString()
+    });
 
     return { success: true, data };
   } catch (error) {
     console.error('Failed to send welcome email:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return { 
       success: false, 
-      error: new Error(errorMessage)
+      error: error instanceof Error ? error : new Error('Unknown error occurred')
     };
   }
 }

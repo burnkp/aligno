@@ -330,37 +330,18 @@ export const getTeams = query({
 
     const userId = identity.subject;
 
-    // Get user's organization
+    // Find the user in the database
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_id", (q) => q.eq("userId", userId))
       .first();
 
-    if (!user) throw new Error("User not found");
-
-    // Get teams based on user's role and organization
-    const isSuperAdminUser = await isSuperAdmin(ctx.db, userId);
-    const isOrgAdminUser = await isOrgAdmin(ctx.db, userId, user.organizationId);
-
-    if (isSuperAdminUser) {
-      // Super admin can see all teams
-      return await ctx.db.query("teams").collect();
-    } else if (isOrgAdminUser) {
-      // Org admin can see all teams in their organization
-      return await ctx.db
-        .query("teams")
-        .withIndex("by_organization", (q) => q.eq("organizationId", user.organizationId))
-        .collect();
-    } else {
-      // Regular users can only see teams they're members of
-      const allTeams = await ctx.db
-        .query("teams")
-        .withIndex("by_organization", (q) => q.eq("organizationId", user.organizationId))
-        .collect();
-
-      return allTeams.filter(team => 
-        team.members.some(member => member.userId === userId)
-      );
+    if (!user) {
+      throw new Error("User not found");
     }
+
+    // For new organizations, return an empty array
+    // Teams will be created later through the Teams page
+    return [];
   },
 });

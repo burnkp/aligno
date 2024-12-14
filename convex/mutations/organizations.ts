@@ -1,7 +1,6 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
-import { internal } from "../_generated/api";
 
 export const create = mutation({
   args: {
@@ -17,10 +16,10 @@ export const create = mutation({
     const organizationId = await ctx.db.insert("organizations", {
       name: args.name,
       contactPerson: args.contactPerson,
-      status: "inactive", // Requires admin approval
+      status: "active",
       subscription: {
         plan: "trial",
-        status: "pending",
+        status: "active",
         startDate: new Date().toISOString(),
       },
       createdAt: new Date().toISOString(),
@@ -30,7 +29,7 @@ export const create = mutation({
     // Create the initial admin user
     const userId = await ctx.db.insert("users", {
       userId: "pending", // Will be updated after Clerk authentication
-      email: args.contactPerson.email,
+      email: args.contactPerson.email.toLowerCase(),
       name: args.contactPerson.name,
       role: "org_admin",
       organizationId: organizationId,
@@ -62,25 +61,55 @@ export const create = mutation({
 export const updateUserClerkId = mutation({
   args: {
     email: v.string(),
-    clerkUserId: v.string(),
+    clerkId: v.string(),
+    orgName: v.string(),
   },
   handler: async (ctx, args) => {
     // Find the user by email
     const user = await ctx.db
       .query("users")
-      .filter((q) => q.eq(q.field("email"), args.email))
+      .withIndex("by_email", (q) => q.eq("email", args.email.toLowerCase()))
       .first();
 
     if (!user) {
       throw new Error("User not found");
     }
 
+    // Find the organization
+    const organization = await ctx.db
+      .query("organizations")
+      .filter((q) => 
+        q.eq(q.field("contactPerson.email"), args.email.toLowerCase())
+      )
+      .first();
+
+    if (!organization) {
+      throw new Error("Organization not found");
+    }
+
     // Update the user's Clerk ID
     await ctx.db.patch(user._id, {
-      userId: args.clerkUserId,
+      userId: args.clerkId,
       updatedAt: new Date().toISOString(),
     });
 
-    return user._id;
+    // Create audit log
+    await ctx.db.insert("auditLogs", {
+      userId: args.clerkId,
+      action: "user_clerk_id_updated",
+      resource: "users",
+      details: {
+        userId: user._id,
+        email: args.email,
+        organizationId: organization._id,
+      },
+      organizationId: organization._id,
+      timestamp: new Date().toISOString(),
+    });
+
+    return {
+      userId: user._id,
+      organizationId: organization._id,
+    };
   },
 }); 
