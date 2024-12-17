@@ -1,359 +1,217 @@
 "use client";
 
 import { useState } from "react";
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
-import {
-  Dialog,
+import { 
+  Dialog, 
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Loader2 } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+
+const formSchema = z.object({
+  orgName: z.string().min(2, "Organization name must be at least 2 characters"),
+  contactName: z.string().min(2, "Contact name must be at least 2 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  phone: z.string().optional(),
+});
+
+type FormData = z.infer<typeof formSchema>;
 
 interface OrganizationSetupWizardProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type Step = "organization" | "admin" | "settings";
-
-interface FormData {
-  organization: {
-    name: string;
-    contactPerson: {
-      name: string;
-      email: string;
-      phone: string;
-    };
-    subscription: {
-      plan: string;
-    };
-  };
-  admin: {
-    name: string;
-    email: string;
-    password: string;
-  };
-  settings: {
-    allowTeamCreation: boolean;
-    requireApproval: boolean;
-  };
-}
-
-const INITIAL_FORM_DATA: FormData = {
-  organization: {
-    name: "",
-    contactPerson: {
-      name: "",
-      email: "",
-      phone: "",
-    },
-    subscription: {
-      plan: "basic",
-    },
-  },
-  admin: {
-    name: "",
-    email: "",
-    password: "",
-  },
-  settings: {
-    allowTeamCreation: true,
-    requireApproval: true,
-  },
-};
-
 export function OrganizationSetupWizard({
   isOpen,
   onClose,
 }: OrganizationSetupWizardProps) {
-  const { toast } = useToast();
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<Step>("organization");
-  const [formData, setFormData] = useState<FormData>(INITIAL_FORM_DATA);
-  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const createOrganization = useMutation(api.mutations.organizations.create);
 
-  const createOrganization = useMutation(api.organizations.createOrganization);
-  const createUser = useMutation(api.users.createUser);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+  });
 
-  const handleStepChange = (step: Step) => {
-    setCurrentStep(step);
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-
+  const onSubmit = async (data: FormData) => {
+    if (isSubmitting) return;
+    
     try {
-      // Create organization
-      const organizationId = await createOrganization({
-        name: formData.organization.name,
-        contactPerson: formData.organization.contactPerson,
-        subscription: {
-          plan: formData.organization.subscription.plan,
-          startDate: new Date().toISOString(),
+      setIsSubmitting(true);
+
+      // Create organization in Convex
+      const orgResult = await createOrganization({
+        name: data.orgName,
+        contactPerson: {
+          name: data.contactName,
+          email: data.email,
+          phone: data.phone,
         },
       });
 
-      // Create admin user
-      await createUser({
-        name: formData.admin.name,
-        email: formData.admin.email,
-        role: "org_admin",
-        organizationId,
+      if (!orgResult) {
+        throw new Error("Failed to create organization");
+      }
+
+      // Send welcome email
+      const emailResponse = await fetch("/api/send-welcome-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: data.email,
+          orgName: data.orgName,
+          name: data.contactName,
+        }),
       });
 
-      toast({
-        title: "Success",
-        description: "Organization created successfully",
-      });
+      const emailData = await emailResponse.json();
 
+      if (!emailResponse.ok) {
+        console.error("Email API error:", emailData);
+        // Continue with redirection even if email fails
+      }
+
+      // Reset form and close modal
+      reset();
       onClose();
-      setFormData(INITIAL_FORM_DATA);
-      
-      // Redirect to welcome page
-      router.push(`/admin/organizations/${organizationId}/welcome`);
+
+      // Show success toast
+      toast({
+        title: "Organization Created",
+        description: "Please check your email to access your organization's dashboard.",
+      });
+
+      // Construct confirmation URL with parameters
+      const params = new URLSearchParams({
+        orgName: data.orgName,
+        email: data.email,
+      });
+
+      // Force hard navigation to confirmation page
+      window.location.href = `/get-started/confirmation?${params.toString()}`;
     } catch (error) {
+      console.error("Failed to create organization:", error);
       toast({
         title: "Error",
-        description: "Failed to create organization",
+        description: error instanceof Error ? error.message : "Failed to create organization. Please try again.",
         variant: "destructive",
       });
-      console.error(error);
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+    <Dialog 
+      open={isOpen} 
+      onOpenChange={(open) => {
+        if (!isSubmitting && !open) {
+          reset();
+          onClose();
+        }
+      }}
+    >
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>Organization Setup Wizard</DialogTitle>
+          <DialogTitle>Create Your Organization</DialogTitle>
+          <DialogDescription>
+            Enter your organization details to get started with Aligno.
+          </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
-          <Tabs value={currentStep} onValueChange={(v) => handleStepChange(v as Step)}>
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="organization">Organization</TabsTrigger>
-              <TabsTrigger value="admin">Admin User</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
-            </TabsList>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="orgName">Organization Name</Label>
+            <Input
+              id="orgName"
+              {...register("orgName")}
+              placeholder="Enter organization name"
+              disabled={isSubmitting}
+            />
+            {errors.orgName && (
+              <p className="text-sm text-red-500">{errors.orgName.message}</p>
+            )}
+          </div>
 
-            <TabsContent value="organization" className="space-y-4">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="org-name">Organization Name</Label>
-                  <Input
-                    id="org-name"
-                    value={formData.organization.name}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        organization: {
-                          ...formData.organization,
-                          name: e.target.value,
-                        },
-                      })
-                    }
-                  />
-                </div>
+          <div className="space-y-2">
+            <Label htmlFor="contactName">Contact Name</Label>
+            <Input
+              id="contactName"
+              {...register("contactName")}
+              placeholder="Enter your full name"
+              disabled={isSubmitting}
+            />
+            {errors.contactName && (
+              <p className="text-sm text-red-500">
+                {errors.contactName.message}
+              </p>
+            )}
+          </div>
 
-                <Separator />
+          <div className="space-y-2">
+            <Label htmlFor="email">Email Address</Label>
+            <Input
+              id="email"
+              type="email"
+              {...register("email")}
+              placeholder="Enter your email"
+              disabled={isSubmitting}
+            />
+            {errors.email && (
+              <p className="text-sm text-red-500">{errors.email.message}</p>
+            )}
+          </div>
 
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Contact Person</h3>
-                  <div>
-                    <Label htmlFor="contact-name">Name</Label>
-                    <Input
-                      id="contact-name"
-                      value={formData.organization.contactPerson.name}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          organization: {
-                            ...formData.organization,
-                            contactPerson: {
-                              ...formData.organization.contactPerson,
-                              name: e.target.value,
-                            },
-                          },
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="contact-email">Email</Label>
-                    <Input
-                      id="contact-email"
-                      type="email"
-                      value={formData.organization.contactPerson.email}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          organization: {
-                            ...formData.organization,
-                            contactPerson: {
-                              ...formData.organization.contactPerson,
-                              email: e.target.value,
-                            },
-                          },
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="contact-phone">Phone</Label>
-                    <Input
-                      id="contact-phone"
-                      value={formData.organization.contactPerson.phone}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          organization: {
-                            ...formData.organization,
-                            contactPerson: {
-                              ...formData.organization.contactPerson,
-                              phone: e.target.value,
-                            },
-                          },
-                        })
-                      }
-                    />
-                  </div>
-                </div>
+          <div className="space-y-2">
+            <Label htmlFor="phone">Phone Number (Optional)</Label>
+            <Input
+              id="phone"
+              {...register("phone")}
+              placeholder="Enter phone number"
+              disabled={isSubmitting}
+            />
+            {errors.phone && (
+              <p className="text-sm text-red-500">{errors.phone.message}</p>
+            )}
+          </div>
 
-                <Separator />
-
-                <div>
-                  <Label htmlFor="subscription-plan">Subscription Plan</Label>
-                  <Select
-                    value={formData.organization.subscription.plan}
-                    onValueChange={(value) =>
-                      setFormData({
-                        ...formData,
-                        organization: {
-                          ...formData.organization,
-                          subscription: {
-                            ...formData.organization.subscription,
-                            plan: value,
-                          },
-                        },
-                      })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select plan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="basic">Basic</SelectItem>
-                      <SelectItem value="pro">Professional</SelectItem>
-                      <SelectItem value="enterprise">Enterprise</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button
-                  type="button"
-                  onClick={() => handleStepChange("admin")}
-                >
-                  Next
-                </Button>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="admin" className="space-y-4">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="admin-name">Admin Name</Label>
-                  <Input
-                    id="admin-name"
-                    value={formData.admin.name}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        admin: {
-                          ...formData.admin,
-                          name: e.target.value,
-                        },
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="admin-email">Admin Email</Label>
-                  <Input
-                    id="admin-email"
-                    type="email"
-                    value={formData.admin.email}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        admin: {
-                          ...formData.admin,
-                          email: e.target.value,
-                        },
-                      })
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-between">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleStepChange("organization")}
-                >
-                  Previous
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => handleStepChange("settings")}
-                >
-                  Next
-                </Button>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="settings" className="space-y-4">
-              <div className="space-y-4">
-                {/* Settings will be implemented in the next iteration */}
-                <p className="text-muted-foreground">
-                  Organization settings will be configurable after creation.
-                </p>
-              </div>
-
-              <div className="flex justify-between">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => handleStepChange("admin")}
-                >
-                  Previous
-                </Button>
-                <Button type="submit" disabled={isLoading}>
-                  Create Organization
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
+          <div className="pt-4">
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating Organization...
+                </>
+              ) : (
+                "Create Organization"
+              )}
+            </Button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

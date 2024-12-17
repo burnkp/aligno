@@ -73,4 +73,28 @@ export const getOrganizationLogs = query({
 
     return logs;
   },
+});
+
+/**
+ * Get all audit logs
+ */
+export const getAllLogs = query({
+  args: {},
+  async handler(ctx) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const userId = identity.subject;
+    const isSuperAdminUser = await isSuperAdmin(ctx.db, userId);
+
+    // Only super admin can view all logs
+    if (!isSuperAdminUser) {
+      throw new Error("Not authorized to view all logs");
+    }
+
+    return await ctx.db
+      .query("auditLogs")
+      .order("desc")
+      .take(1000);
+  },
 }); 

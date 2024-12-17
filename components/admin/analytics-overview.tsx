@@ -2,28 +2,37 @@
 
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Users,
-  UserPlus,
-  UserMinus,
+  Building2,
   BarChart,
   Activity,
   Target,
+  TrendingUp,
+  ArrowUpRight,
+  ArrowDownRight,
 } from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart as RechartsBarChart,
+  Bar,
+} from "recharts";
 
-interface AnalyticsOverviewProps {
-  organizationId: Id<"organizations">;
-}
+export function AnalyticsOverview() {
+  // Direct data fetching from tables
+  const organizations = useQuery(api.organizations.getAllOrganizations);
+  const users = useQuery(api.users.getAllUsers);
+  const teams = useQuery(api.teams.getAllTeams);
+  const auditLogs = useQuery(api.auditLogs.getAllLogs);
 
-export function AnalyticsOverview({ organizationId }: AnalyticsOverviewProps) {
-  const analytics = useQuery(api.analytics.getOrganizationAnalytics, {
-    organizationId,
-  });
-
-  if (!analytics) {
+  if (!organizations || !users || !teams || !auditLogs) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {[...Array(6)].map((_, i) => (
@@ -40,137 +49,186 @@ export function AnalyticsOverview({ organizationId }: AnalyticsOverviewProps) {
     );
   }
 
-  const { activeUsers, teams, activity } = analytics;
+  // Calculate active users
+  const now = new Date();
+  const dailyUsers = new Set();
+  const weeklyUsers = new Set();
+  const monthlyUsers = new Set(users.map(user => user.userId));
+
+  auditLogs.forEach((log) => {
+    const logDate = new Date(log.timestamp);
+    const daysDiff = (now.getTime() - logDate.getTime()) / (1000 * 60 * 60 * 24);
+
+    if (daysDiff <= 1) dailyUsers.add(log.userId);
+    if (daysDiff <= 7) weeklyUsers.add(log.userId);
+  });
+
+  // Calculate team metrics
+  const totalTeams = teams.length;
+  const activeTeams = teams.filter(team => team.members && team.members.length > 0);
+
+  // Calculate action metrics
+  const actionTypes = [
+    "create_organization",
+    "create_strategic_objective",
+    "create_operational_key_result",
+    "create_kpi",
+    "create_team",
+    "add_team_member"
+  ];
+
+  const actionsByType = actionTypes.reduce((acc, type) => {
+    acc[type] = auditLogs.filter(log => log.action === type).length;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const totalActions = Object.values(actionsByType).reduce((a, b) => a + b, 0);
+
+  // Prepare chart data
+  const userActivityData = [
+    { name: 'Daily', value: dailyUsers.size },
+    { name: 'Weekly', value: weeklyUsers.size },
+    { name: 'Monthly', value: monthlyUsers.size },
+  ];
+
+  const actionData = Object.entries(actionsByType).map(([type, count]) => ({
+    name: type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+    value: count,
+  }));
 
   return (
     <div className="space-y-8">
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
-          <TabsTrigger value="teams">Teams</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Daily Active Users
-                </CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{activeUsers.daily}</div>
-                <p className="text-xs text-muted-foreground">
-                  {activeUsers.weekly} weekly • {activeUsers.monthly} monthly
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Teams</CardTitle>
-                <Target className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{teams.total}</div>
-                <p className="text-xs text-muted-foreground">
-                  {teams.active} active teams
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Actions
-                </CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{activity.totalActions}</div>
-                <p className="text-xs text-muted-foreground">
-                  Last 1000 actions tracked
-                </p>
-              </CardContent>
-            </Card>
+      {/* Main Metrics */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="p-6 hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">
+                Total Organizations
+              </p>
+              <div className="flex items-baseline">
+                <h2 className="text-3xl font-bold">{organizations.length}</h2>
+                <span className="ml-2 flex items-center text-sm font-medium text-green-600">
+                  <ArrowUpRight className="h-4 w-4" />
+                  Active
+                </span>
+              </div>
+            </div>
+            <div className="p-3 rounded-full bg-green-100">
+              <Building2 className="h-6 w-6 text-green-600" />
+            </div>
           </div>
-        </TabsContent>
+        </Card>
 
-        <TabsContent value="activity" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {Object.entries(activity.actionsByType).map(([type, count]) => (
-              <Card key={type}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium capitalize">
-                    {type} Actions
-                  </CardTitle>
-                  <BarChart className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{count}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {((count / activity.totalActions) * 100).toFixed(1)}% of total
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
+        <Card className="p-6 hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">
+                Total Teams
+              </p>
+              <div className="flex items-baseline">
+                <h2 className="text-3xl font-bold">{totalTeams}</h2>
+                <span className="ml-2 flex items-center text-sm font-medium text-green-600">
+                  <ArrowUpRight className="h-4 w-4" />
+                  {activeTeams.length} active
+                </span>
+              </div>
+            </div>
+            <div className="p-3 rounded-full bg-green-100">
+              <Target className="h-6 w-6 text-green-600" />
+            </div>
           </div>
-        </TabsContent>
+        </Card>
 
-        <TabsContent value="teams" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Teams</CardTitle>
-                <UserPlus className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{teams.active}</div>
-                <p className="text-xs text-muted-foreground">
-                  {((teams.active / teams.total) * 100).toFixed(1)}% of total
+        <Card className="p-6 hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">
+                Total Users
+              </p>
+              <div className="flex items-baseline">
+                <h2 className="text-3xl font-bold">{users.length}</h2>
+                <span className="ml-2 flex items-center text-sm font-medium text-green-600">
+                  <ArrowUpRight className="h-4 w-4" />
+                  Active
+                </span>
+              </div>
+            </div>
+            <div className="p-3 rounded-full bg-green-100">
+              <Users className="h-6 w-6 text-green-600" />
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* User Activity Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">User Activity Trends</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={userActivityData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#8884d8"
+                  strokeWidth={2}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Actions Distribution */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Actions Distribution</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[400px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <RechartsBarChart data={actionData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="value" fill="#8884d8" />
+              </RechartsBarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Action Type Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {Object.entries(actionsByType).map(([type, count]) => (
+          <Card key={type} className="p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground capitalize">
+                  {type.split('_').join(' ')}
                 </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Inactive Teams
-                </CardTitle>
-                <UserMinus className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {teams.total - teams.active}
+                <div className="flex items-baseline">
+                  <h2 className="text-3xl font-bold">{count}</h2>
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    {((count / totalActions) * 100).toFixed(1)}% of total
+                  </span>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {(((teams.total - teams.active) / teams.total) * 100).toFixed(1)}
-                  % of total
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Average Team Size
-                </CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {(activeUsers.monthly / teams.active).toFixed(1)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Active users per team
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
+              </div>
+              <div className="p-3 rounded-full bg-blue-100">
+                <Activity className="h-6 w-6 text-blue-600" />
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 } 

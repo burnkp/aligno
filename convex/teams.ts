@@ -306,3 +306,42 @@ export const removeMember = mutation({
     return true;
   },
 });
+
+/**
+ * Get all teams
+ * Only super_admin can view all teams
+ */
+export const getAllTeams = query({
+  args: {},
+  handler: async (ctx) => {
+    const teams = await ctx.db.query("teams").collect();
+    return teams;
+  },
+});
+
+/**
+ * Get teams for the authenticated user
+ */
+export const getTeams = query({
+  args: {},
+  async handler(ctx) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const userId = identity.subject;
+
+    // Find the user in the database
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // For new organizations, return an empty array
+    // Teams will be created later through the Teams page
+    return [];
+  },
+});

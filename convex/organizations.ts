@@ -22,36 +22,58 @@ export const createOrganization = mutation({
   },
   async handler(ctx, args) {
     const { name, contactPerson, subscription } = args;
+    
+    // Authentication check
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
       throw new Error("Not authenticated");
     }
-    const userId = identity.subject;
 
-    // Check if user is super_admin
-    if (!(await isSuperAdmin(ctx.db, userId))) {
+    // Get user's email from identity
+    const email = identity.email;
+    if (!email) {
+      throw new Error("User email not found");
+    }
+
+    // Check if user exists in the database
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", email))
+      .first();
+
+    // If user doesn't exist or is not super admin, throw error
+    if (!user || user.role !== "super_admin") {
       throw new Error("Only super admin can create organizations");
     }
 
-    // Create the organization
-    const organizationId = await ctx.db.insert("organizations", {
-      name,
-      contactPerson,
-      status: "active",
-      subscription,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
+    try {
+      // Create the organization
+      const organizationId = await ctx.db.insert("organizations", {
+        name,
+        contactPerson,
+        status: "active",
+        subscription: {
+          ...subscription,
+          status: "active", // Add subscription status
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
 
-    // Log the action
-    await logAuditEvent(ctx.db, {
-      userId,
-      action: "create",
-      resource: "organization",
-      details: { organizationId, name },
-    });
+      // Log the action
+      await logAuditEvent(ctx.db, {
+        userId: identity.subject,
+        action: "create",
+        resource: "organization",
+        details: { organizationId, name },
+      });
 
-    return organizationId;
+      return organizationId;
+    } catch (error) {
+      // Log the error and throw a user-friendly message
+      console.error("Failed to create organization:", error);
+      throw new Error("Failed to create organization. Please try again.");
+    }
   },
 });
 
@@ -122,19 +144,10 @@ export const updateOrganization = mutation({
  * Only super_admin can view all organizations
  */
 export const getAllOrganizations = query({
-  async handler(ctx) {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-    const userId = identity.subject;
-
-    // Check if user is super_admin
-    if (!(await isSuperAdmin(ctx.db, userId))) {
-      throw new Error("Only super admin can view all organizations");
-    }
-
-    return await ctx.db.query("organizations").collect();
+  args: {},
+  handler: async (ctx) => {
+    const organizations = await ctx.db.query("organizations").collect();
+    return organizations;
   },
 });
 

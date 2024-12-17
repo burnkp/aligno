@@ -1,17 +1,14 @@
-import { Inter } from 'next/font/google';
-import { ClerkProvider } from '@clerk/nextjs';
-import { ConvexClientProvider } from './providers/convex-client-provider';
-import { ThemeProvider } from './providers/theme-provider';
-import { Toaster } from '@/components/ui/toaster';
-import './globals.css';
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { AuthProvider } from "@/components/providers/auth-provider";
+import { ConvexClientProvider } from "@/components/providers/convex-client-provider";
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ["latin"] });
 
-export const dynamic = 'force-dynamic';
-
-export const metadata = {
-  title: 'Aligno',
-  description: 'OKR Management Platform',
+export const metadata: Metadata = {
+  title: "Aligno",
+  description: "Performance Management Platform",
 };
 
 export default function RootLayout({
@@ -20,22 +17,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
-      <html lang="en" suppressHydrationWarning>
-        <body className={inter.className}>
+    <html lang="en">
+      <body className={inter.className}>
+        <AuthProvider>
           <ConvexClientProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-            >
-              {children}
-              <Toaster />
-            </ThemeProvider>
+            {children}
           </ConvexClientProvider>
-        </body>
-      </html>
-    </ClerkProvider>
+        </AuthProvider>
+      </body>
+    </html>
   );
 }

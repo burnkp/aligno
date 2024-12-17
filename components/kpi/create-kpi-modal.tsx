@@ -4,10 +4,10 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-
+import { useToast } from "@/components/ui/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -29,83 +32,105 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
+import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
-  title: z.string().min(2, "Title must be at least 2 characters"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
-  currentValue: z.number().min(0),
-  targetValue: z.number().min(1),
-  teamId: z.string().min(1, "Please select a team"),
-  assignedTo: z.string().min(1, "Please select a team member"),
-  startDate: z.string().min(1, "Start date is required"),
-  endDate: z.string().min(1, "End date is required"),
+  title: z.string().min(1, "Title is required"),
+  description: z.string().optional(),
+  target: z.string().min(1, "Target value is required"),
+  teamId: z.string().min(1, "Team is required"),
+  assignedTo: z.string().min(1, "Assignee is required"),
 });
 
 interface CreateKPIModalProps {
   isOpen: boolean;
   onClose: () => void;
-  teams: Array<{ _id: string; name: string; members: Array<{ userId: string; name: string }> }>;
-  okrId: Id<"operationalKeyResults">;
+  okrId: Id<"operationalKeyResults"> | null;
 }
 
-export function CreateKPIModal({ isOpen, onClose, teams, okrId }: CreateKPIModalProps) {
+export function CreateKPIModal({
+  isOpen,
+  onClose,
+  okrId,
+}: CreateKPIModalProps) {
   const { toast } = useToast();
-  const createKPI = useMutation(api.kpis.createKPI);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<string>("");
+
+  const createKPI = useMutation(api.kpis.create);
+  const teams = useQuery(api.teams.getTeams) || [];
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
       description: "",
-      currentValue: 0,
-      targetValue: 100,
+      target: "",
       teamId: "",
       assignedTo: "",
-      startDate: new Date().toISOString().split("T")[0],
-      endDate: "",
     },
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (!okrId) return;
+
     try {
-      setIsLoading(true);
+      setIsSubmitting(true);
       await createKPI({
-        ...values,
-        currentValue: Number(values.currentValue),
-        targetValue: Number(values.targetValue),
-        operationalKeyResultId: okrId,
+        title: values.title,
+        description: values.description || "",
+        target: parseFloat(values.target),
+        teamId: values.teamId as Id<"teams">,
+        assignedTo: values.assignedTo,
+        okrId,
       });
+
       toast({
-        title: "Success",
-        description: "KPI created successfully",
+        title: "KPI Created",
+        description: "Your KPI has been created successfully.",
       });
-      onClose();
+
       form.reset();
+      onClose();
     } catch (error) {
+      console.error("Failed to create KPI:", error);
       toast({
         title: "Error",
-        description: "Something went wrong",
+        description: "Failed to create KPI. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  const selectedTeamMembers = teams.find(team => team._id === selectedTeam)?.members || [];
+  const handleTeamChange = (value: string) => {
+    setSelectedTeam(value);
+    form.setValue("teamId", value);
+    form.setValue("assignedTo", ""); // Reset assignee when team changes
+  };
+
+  const selectedTeamMembers = teams?.find(team => team._id === selectedTeam)?.members || [];
+
+  if (!teams) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent>
+          <div className="flex items-center justify-center p-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>Create Key Performance Indicator</DialogTitle>
+          <DialogTitle>Create New KPI</DialogTitle>
         </DialogHeader>
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -115,12 +140,17 @@ export function CreateKPIModal({ isOpen, onClose, teams, okrId }: CreateKPIModal
                 <FormItem>
                   <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter KPI title" {...field} />
+                    <Input
+                      disabled={isSubmitting}
+                      placeholder="Enter KPI title"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="description"
@@ -129,6 +159,7 @@ export function CreateKPIModal({ isOpen, onClose, teams, okrId }: CreateKPIModal
                   <FormLabel>Description</FormLabel>
                   <FormControl>
                     <Textarea
+                      disabled={isSubmitting}
                       placeholder="Enter KPI description"
                       {...field}
                     />
@@ -137,55 +168,36 @@ export function CreateKPIModal({ isOpen, onClose, teams, okrId }: CreateKPIModal
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="currentValue"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Current Value</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        {...field} 
-                        onChange={e => field.onChange(Number(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="targetValue"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Target Value</FormLabel>
-                    <FormControl>
-                      <Input 
-                        type="number" 
-                        {...field}
-                        onChange={e => field.onChange(Number(e.target.value))}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+
+            <FormField
+              control={form.control}
+              name="target"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Target Value</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      disabled={isSubmitting}
+                      placeholder="Enter target value"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="teamId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Team</FormLabel>
-                  <Select 
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                      setSelectedTeam(value);
-                      form.setValue("assignedTo", "");
-                    }} 
-                    defaultValue={field.value}
+                  <Select
+                    disabled={isSubmitting}
+                    onValueChange={handleTeamChange}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -204,13 +216,18 @@ export function CreateKPIModal({ isOpen, onClose, teams, okrId }: CreateKPIModal
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="assignedTo"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Assigned To</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select
+                    disabled={isSubmitting || !selectedTeam}
+                    onValueChange={field.onChange}
+                    value={field.value}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select team member" />
@@ -219,7 +236,7 @@ export function CreateKPIModal({ isOpen, onClose, teams, okrId }: CreateKPIModal
                     <SelectContent>
                       {selectedTeamMembers.map((member) => (
                         <SelectItem key={member.userId} value={member.userId}>
-                          {member.name}
+                          {member.name || member.email}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -228,40 +245,25 @@ export function CreateKPIModal({ isOpen, onClose, teams, okrId }: CreateKPIModal
                 </FormItem>
               )}
             />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="startDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Start Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="endDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>End Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <div className="flex justify-end space-x-3">
-              <Button variant="outline" onClick={onClose}>
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={isSubmitting}
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading}>
-                Create KPI
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create KPI"
+                )}
               </Button>
             </div>
           </form>
