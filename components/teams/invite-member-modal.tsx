@@ -7,7 +7,7 @@ import * as z from "zod";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-const logger = require("../../logger");
+import logger from "@/utils/logger";
 
 import {
   Dialog,

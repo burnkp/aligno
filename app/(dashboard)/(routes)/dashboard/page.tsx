@@ -15,7 +15,7 @@ import { CreateKPIModal } from "@/components/kpi/create-kpi-modal";
 import { SelectParentModal } from "@/components/modals/select-parent-modal";
 import { Id } from "@/convex/_generated/dataModel";
 import { useToast } from "@/components/ui/use-toast";
-const logger = require("../../../../logger");
+import logger from "@/utils/logger";
 
 interface Objective {
   _id: Id<any>;

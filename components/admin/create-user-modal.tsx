@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Id } from "@convex/_generated/dataModel";
-const logger = require("../../logger");
+import logger from "@/utils/logger";
 
 interface CreateUserModalProps {
   isOpen: boolean;

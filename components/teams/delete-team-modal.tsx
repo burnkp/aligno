@@ -16,7 +16,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { useMutation } from "convex/react";
 import { useToast } from "@/components/ui/use-toast";
-const logger = require("../../logger");
+import logger from "@/utils/logger";
 
 interface DeleteTeamModalProps {
   isOpen: boolean;

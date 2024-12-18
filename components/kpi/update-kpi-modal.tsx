@@ -7,7 +7,7 @@ import * as z from "zod";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -19,7 +19,7 @@ import {
 import { Input } from "../ui/input";
 import { useToast } from "../ui/use-toast";
 import { Id } from "@/convex/_generated/dataModel";
-const logger = require("../../logger");
+import logger from "@/utils/logger";
 
 const formSchema = z.object({
   currentValue: z.number().min(0).max(100),

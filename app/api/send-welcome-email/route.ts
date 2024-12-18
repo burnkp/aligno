@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendWelcomeEmail } from "@/lib/email";
-const logger = require("../../../logger");
+import logger from "@/utils/logger";
 
 export async function POST(request: Request) {
   try {

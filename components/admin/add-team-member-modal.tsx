@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-const logger = require("../../logger");
+import logger from "@/utils/logger";
 
 interface AddTeamMemberModalProps {
   isOpen: boolean;

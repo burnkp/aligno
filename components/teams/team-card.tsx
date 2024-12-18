@@ -16,7 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-const logger = require("../../logger");
+import logger from "@/utils/logger";
 
 interface TeamMember {
   userId: string;

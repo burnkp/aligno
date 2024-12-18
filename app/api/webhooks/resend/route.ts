@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { WebhookEvent } from "@clerk/nextjs/server";
+import logger from "@/utils/logger";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
-const logger = require("../../../../logger");
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 

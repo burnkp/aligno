@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState } from "react";
-const logger = require("../../../logger");
+import logger from "@/utils/logger";
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({

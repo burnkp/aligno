@@ -11,7 +11,7 @@ import { api } from "@/convex/_generated/api";
 import { useMutation } from "convex/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/use-toast";
-const logger = require("../../logger");
+import logger from "@/utils/logger";
 
 interface RemoveMemberModalProps {
   isOpen: boolean;

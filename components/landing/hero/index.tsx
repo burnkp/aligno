@@ -1,13 +1,17 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { SignInButton, useAuth, useUser } from "@clerk/nextjs";
-import { useQuery } from "convex/react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import logger from "@/utils/logger";
+import { Button } from "@/components/ui/button";
+import { SignInButton, useAuth, useUser } from "@clerk/nextjs";
 import Image from "next/image";
 import Link from "next/link";
-const logger = require("../../../logger");
 
 export const Hero = () => {
   const router = useRouter();

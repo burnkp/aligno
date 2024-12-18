@@ -3,7 +3,8 @@
 import { Component, ErrorInfo, ReactNode, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-const logger = require("../logger");
+import { AlertCircle } from "lucide-react";
+import logger from "@/utils/logger";
 
 interface ErrorBoundaryProps {
   error: Error;

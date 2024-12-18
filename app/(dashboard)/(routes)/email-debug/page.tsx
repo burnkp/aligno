@@ -5,7 +5,7 @@ import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-const logger = require("../../../../logger");
+import logger from "@/utils/logger";
 
 export default function EmailDebugPage() {
   const [isLoading, setIsLoading] = useState(false);

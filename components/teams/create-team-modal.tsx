@@ -7,7 +7,7 @@ import * as z from "zod";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
-const logger = require("../../logger");
+import logger from "@/utils/logger";
 
 import {
   Dialog,

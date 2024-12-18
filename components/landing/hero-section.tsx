@@ -7,8 +7,11 @@ import { useAuth, SignInButton, useUser } from "@clerk/nextjs";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-const logger = require("../../logger");
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import logger from "@/utils/logger";
 
 export function HeroSection() {
   const { isSignedIn, userId } = useAuth();

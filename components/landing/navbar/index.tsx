@@ -14,7 +14,7 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
-const logger = require("../../../logger");
+import logger from "@/utils/logger";
 
 export const Navbar = () => {
   const router = useRouter();

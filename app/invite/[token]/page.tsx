@@ -7,7 +7,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-const logger = require("../../../logger");
+import logger from "@/utils/logger";
 
 export default function InvitationPage({ params }: { params: { token: string } }) {
   const { isSignedIn, user, isLoaded } = useUser();

@@ -1,5 +1,5 @@
 import { Resend } from 'resend';
-const logger = require("../logger");
+import logger from "@/utils/logger";
 
 if (!process.env.RESEND_API_KEY) {
   throw new Error('RESEND_API_KEY is not defined in environment variables');

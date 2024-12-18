@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@convex/_generated/dataModel";
+import { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -16,7 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { UserPlus } from "lucide-react";
 import { AddTeamMemberModal } from "./add-team-member-modal";
-const logger = require("../../logger");
+import logger from "@/utils/logger";
 
 interface TeamMember {
   userId: string;

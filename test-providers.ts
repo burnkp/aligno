@@ -1,5 +1,5 @@
 import { ConvexReactClient } from "convex/react";
-const logger = require("./logger");
+import logger from "@/utils/logger";
 
 interface TestResult {
   success: boolean;

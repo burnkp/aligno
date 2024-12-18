@@ -2,7 +2,7 @@
 
 import { ClerkProvider } from "@clerk/nextjs";
 import { ReactNode, useEffect } from "react";
-const logger = require("../../logger");
+import logger from "@/utils/logger";
 
 interface AuthProviderProps {
   children: ReactNode;

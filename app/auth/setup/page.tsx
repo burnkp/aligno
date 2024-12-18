@@ -7,7 +7,7 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-const logger = require("../../../logger");
+import logger from "@/utils/logger";
 
 export default function AuthSetupPage() {
   const searchParams = useSearchParams();

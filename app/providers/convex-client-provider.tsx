@@ -4,7 +4,7 @@ import { useAuth } from "@clerk/nextjs";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { ConvexReactClient } from "convex/react";
 import { useEffect } from "react";
-const logger = require("../../logger");
+import logger from "@/utils/logger";
 
 // Verify environment variables at initialization
 const verifyEnvironmentVariables = () => {

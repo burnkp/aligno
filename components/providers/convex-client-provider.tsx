@@ -4,7 +4,7 @@ import { ReactNode, useEffect } from "react";
 import { ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { useAuth } from "@clerk/nextjs";
-const logger = require("../../logger");
+import logger from "@/utils/logger";
 
 interface ConvexClientProviderProps {
   children: ReactNode;

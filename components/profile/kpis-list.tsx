@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-const logger = require("../../logger");
+import logger from "@/utils/logger";
 
 interface KPIsListProps {
   objectiveId: Id<"strategicObjectives">;
