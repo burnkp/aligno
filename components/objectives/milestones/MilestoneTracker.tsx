@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+const logger = require("../../../logger");
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,7 +43,7 @@ export function MilestoneTracker({ objectiveId }: MilestoneTrackerProps) {
         variant: "default",
       });
     } catch (error) {
-      console.error(error);
+      logger.error(error);
       toast({
         title: "Error",
         description: "Failed to update milestone status",
@@ -62,7 +63,7 @@ export function MilestoneTracker({ objectiveId }: MilestoneTrackerProps) {
         variant: "default",
       });
     } catch (error) {
-      console.error(error);
+      logger.error(error);
       toast({
         title: "Error",
         description: "Failed to delete milestone",

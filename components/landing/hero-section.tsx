@@ -8,6 +8,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+const logger = require("../../logger");
 
 export function HeroSection() {
   const { isSignedIn, userId } = useAuth();
@@ -22,7 +23,7 @@ export function HeroSection() {
         try {
           await ensureSuperAdmin({ userId });
         } catch (error) {
-          console.error("Error creating super admin:", error);
+          logger.error("Error creating super admin:", error);
         }
       }
     };
@@ -50,7 +51,7 @@ export function HeroSection() {
         }
       }
     } catch (error) {
-      console.error("Error navigating to dashboard:", error);
+      logger.error("Error navigating to dashboard:", error);
     }
   };
 

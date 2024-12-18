@@ -7,6 +7,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+const logger = require("../../../logger");
 
 export default function InvitationPage({ params }: { params: { token: string } }) {
   const { isSignedIn, user, isLoaded } = useUser();
@@ -56,7 +57,7 @@ export default function InvitationPage({ params }: { params: { token: string } }
       // Redirect to Clerk's sign-in page
       window.location.href = `/sign-in?redirect_url=${encodeURIComponent(window.location.href)}`;
     } catch (error) {
-      console.error("Sign-in error:", error);
+      logger.error("Sign-in error:", error);
       setIsRedirecting(false);
       toast({
         title: "Error",
@@ -107,7 +108,7 @@ export default function InvitationPage({ params }: { params: { token: string } }
         router.push(`/dashboard/teams/${invitation.teamId}/profile`);
       }
     } catch (error) {
-      console.error("Error accepting invitation:", error);
+      logger.error("Error accepting invitation:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to accept invitation",

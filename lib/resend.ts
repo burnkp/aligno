@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+const logger = require("../logger");
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -35,7 +36,7 @@ export async function sendInvitationEmail({
 
     return { success: true, data, error: null };
   } catch (error) {
-    console.error('Resend error:', error);
-    return { success: false, data: null, error };
+    logger.error('Resend error:', error);
+    throw error;
   }
 } 

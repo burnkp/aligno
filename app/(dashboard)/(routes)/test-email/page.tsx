@@ -6,6 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+const logger = require("../../../../logger");
 
 interface TestResult {
   success: boolean;
@@ -43,7 +44,7 @@ export default function TestEmailPage() {
         });
       }
     } catch (error) {
-      console.error("Test failed:", error);
+      logger.error("Test failed:", error);
       toast({
         title: "Error",
         description: "Failed to run test",

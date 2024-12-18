@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
+const logger = require("../../logger");
 
 interface TeamSettingsFormProps {
   team: {
@@ -80,12 +81,12 @@ export function TeamSettingsForm({ team }: TeamSettingsFormProps) {
         description: "Team settings updated successfully",
       });
     } catch (error) {
+      logger.error(error);
       toast({
         title: "Error",
         description: "Failed to update team settings",
         variant: "destructive",
       });
-      console.error(error);
     } finally {
       setIsLoading(false);
     }

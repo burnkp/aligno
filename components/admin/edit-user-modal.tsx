@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Id } from "@convex/_generated/dataModel";
+const logger = require("../../logger");
 
 interface EditUserModalProps {
   isOpen: boolean;
@@ -79,12 +80,12 @@ export const EditUserModal = ({
 
       onClose();
     } catch (error) {
+      logger.error(error);
       toast({
         title: "Error",
         description: "Failed to update user",
         variant: "destructive",
       });
-      console.error(error);
     } finally {
       setIsLoading(false);
     }

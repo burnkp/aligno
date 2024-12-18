@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { Component, ErrorInfo, ReactNode, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+const logger = require("../logger");
 
 interface ErrorBoundaryProps {
   error: Error;
@@ -11,7 +12,7 @@ interface ErrorBoundaryProps {
 
 export function ErrorBoundary({ error, reset }: ErrorBoundaryProps) {
   useEffect(() => {
-    console.error("Error:", error);
+    logger.error("Error:", error);
   }, [error]);
 
   return (

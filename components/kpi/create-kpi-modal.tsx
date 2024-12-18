@@ -27,6 +27,7 @@ import {
 } from "../ui/select";
 import { useToast } from "../ui/use-toast";
 import { Id } from "@/convex/_generated/dataModel";
+const logger = require("../../logger");
 
 interface Team {
   _id: Id<"teams">;
@@ -101,12 +102,12 @@ export const CreateKPIModal = ({
       form.reset();
       onClose();
     } catch (error) {
+      logger.error(error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to create KPI",
         variant: "destructive",
       });
-      console.error(error);
     } finally {
       setIsLoading(false);
     }

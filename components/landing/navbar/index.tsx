@@ -14,6 +14,7 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
+const logger = require("../../../logger");
 
 export const Navbar = () => {
   const router = useRouter();
@@ -49,7 +50,7 @@ export const Navbar = () => {
         }
       }
     } catch (error) {
-      console.error("Error navigating to dashboard:", error);
+      logger.error("Error navigating to dashboard:", error);
     }
   };
 

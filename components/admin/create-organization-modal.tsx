@@ -8,6 +8,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { useToast } from "../ui/use-toast";
+const logger = require("../../logger");
 
 interface CreateOrganizationModalProps {
   isOpen: boolean;
@@ -63,12 +64,12 @@ export const CreateOrganizationModal = ({
         plan: "basic",
       });
     } catch (error) {
+      logger.error(error);
       toast({
         title: "Error",
         description: "Failed to create organization",
         variant: "destructive",
       });
-      console.error(error);
     } finally {
       setIsLoading(false);
     }

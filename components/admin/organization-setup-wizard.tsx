@@ -19,6 +19,7 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+const logger = require("../../logger");
 
 const formSchema = z.object({
   orgName: z.string().min(2, "Organization name must be at least 2 characters"),
@@ -88,7 +89,7 @@ export function OrganizationSetupWizard({
       const emailData = await emailResponse.json();
 
       if (!emailResponse.ok) {
-        console.error("Email API error:", emailData);
+        logger.error("Email API error:", emailData);
         // Continue with redirection even if email fails
       }
 
@@ -111,7 +112,7 @@ export function OrganizationSetupWizard({
       // Force hard navigation to confirmation page
       window.location.href = `/get-started/confirmation?${params.toString()}`;
     } catch (error) {
-      console.error("Failed to create organization:", error);
+      logger.error("Failed to create organization:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to create organization. Please try again.",

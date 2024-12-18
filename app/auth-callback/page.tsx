@@ -6,6 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import logger from "@/utils/logger"; // Import logger
 
 const SUPER_ADMIN_EMAIL = "kushtrim@promnestria.biz";
 
@@ -18,16 +19,16 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const handleRedirect = async () => {
-      console.log("Auth Callback State:", {
+      logger.info("Auth Callback State: " + JSON.stringify({
         isSignedIn,
         isUserLoaded,
         userId,
         userEmail: clerkUser?.emailAddresses[0]?.emailAddress,
         convexUser: user
-      });
+      }));
 
       if (!isSignedIn || !isUserLoaded || !clerkUser) {
-        console.log("Missing required auth data");
+        logger.warn("Missing required auth data");
         return;
       }
 
@@ -36,19 +37,19 @@ export default function AuthCallback() {
       try {
         // If super admin
         if (userEmail === SUPER_ADMIN_EMAIL) {
-          console.log("Super admin detected, checking user record");
+          logger.info("Super admin detected, checking user record");
           if (!user) {
-            console.log("Creating super admin record");
+            logger.info("Creating super admin record");
             // Create super admin if doesn't exist
             await ensureSuperAdmin({ userId: userId! });
           }
-          console.log("Redirecting to admin dashboard");
+          logger.info("Redirecting to admin dashboard");
           router.push("/admin/dashboard");
           return;
         }
 
         // For other users
-        console.log("Regular user detected:", { user });
+        logger.info("Regular user detected: " + JSON.stringify({ user }));
         if (user) {
           switch (user.role) {
             case "org_admin":
@@ -65,7 +66,7 @@ export default function AuthCallback() {
           router.push("/");
         }
       } catch (error) {
-        console.error("Error in auth callback:", error);
+        logger.error("Error in auth callback: " + error);
         router.push("/");
       }
     };
@@ -78,4 +79,4 @@ export default function AuthCallback() {
       <Loader2 className="h-8 w-8 animate-spin" />
     </div>
   );
-} 
+}

@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+const logger = require("../../logger");
 
 interface AddTeamMemberModalProps {
   isOpen: boolean;
@@ -77,12 +78,12 @@ export function AddTeamMemberModal({
         role: "member",
       });
     } catch (error) {
+      logger.error(error);
       toast({
         title: "Error",
         description: "Failed to add team member",
         variant: "destructive",
       });
-      console.error(error);
     } finally {
       setIsLoading(false);
     }

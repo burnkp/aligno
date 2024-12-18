@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+const logger = require("../../logger");
 
 interface KPI {
   _id: Id<"kpis">;
@@ -54,7 +55,7 @@ export function EditKPIModal({ kpi, isOpen, onClose }: EditKPIModalProps) {
       });
       onClose();
     } catch (error) {
-      console.error(error);
+      logger.error(error);
       toast({
         title: "Error",
         description: "Failed to update KPI",

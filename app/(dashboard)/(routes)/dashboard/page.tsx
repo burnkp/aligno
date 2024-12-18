@@ -15,6 +15,7 @@ import { CreateKPIModal } from "@/components/kpi/create-kpi-modal";
 import { SelectParentModal } from "@/components/modals/select-parent-modal";
 import { Id } from "@/convex/_generated/dataModel";
 import { useToast } from "@/components/ui/use-toast";
+const logger = require("../../../../logger");
 
 interface Objective {
   _id: Id<any>;
@@ -53,7 +54,7 @@ export default function DashboardPage() {
             orgName: "", // Add a default empty string since it's required by the mutation
           });
         } catch (error) {
-          console.error("Failed to update user Clerk ID:", error);
+          logger.error("Failed to update user Clerk ID:", error);
           toast({
             title: "Error",
             description: "Failed to update user information. Please refresh the page.",

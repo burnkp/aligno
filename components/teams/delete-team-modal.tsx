@@ -16,6 +16,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { useMutation } from "convex/react";
 import { useToast } from "@/components/ui/use-toast";
+const logger = require("../../logger");
 
 interface DeleteTeamModalProps {
   isOpen: boolean;
@@ -52,12 +53,12 @@ export function DeleteTeamModal({
       // Just refresh the current page data
       router.refresh();
     } catch (error) {
+      logger.error("Failed to delete team:", error);
       toast({
         variant: "destructive",
         title: "Error",
         description: "Failed to delete team",
       });
-      console.error(error);
     } finally {
       setIsLoading(false);
     }

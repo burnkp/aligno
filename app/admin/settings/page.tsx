@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState } from "react";
+const logger = require("../../../logger");
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
@@ -27,7 +28,7 @@ export default function SettingsPage() {
 
   const handleSave = () => {
     // TODO: Implement settings save functionality
-    console.log("Settings saved:", settings);
+    logger.info("Settings saved:", settings);
   };
 
   return (

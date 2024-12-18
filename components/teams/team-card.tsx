@@ -16,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+const logger = require("../../logger");
 
 interface TeamMember {
   userId: string;
@@ -53,7 +54,7 @@ export function TeamCard({ id, name, description, members, onInvite }: TeamCardP
         description: "Team deleted successfully",
       });
     } catch (error) {
-      console.error(error);
+      logger.error(error);
       toast({
         title: "Error",
         description: "Failed to delete team",

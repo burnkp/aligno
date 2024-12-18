@@ -7,6 +7,7 @@ import * as z from "zod";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
+import { logger } from "../../logger";
 
 import {
   Dialog,
@@ -72,7 +73,7 @@ export function CreateObjectiveModal({ isOpen, onClose, teamId }: CreateObjectiv
       form.reset();
       onClose();
     } catch (error) {
-      console.error(error);
+      logger.error(error);
       toast({
         title: "Error",
         description: "Failed to create strategic objective",

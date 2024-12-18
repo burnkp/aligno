@@ -11,6 +11,7 @@ import { api } from "@/convex/_generated/api";
 import { useMutation } from "convex/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/components/ui/use-toast";
+const logger = require("../../logger");
 
 interface RemoveMemberModalProps {
   isOpen: boolean;
@@ -42,12 +43,12 @@ export function RemoveMemberModal({
       });
       router.refresh();
     } catch (error) {
+      logger.error(error);
       toast({
         variant: "destructive",
         title: "Error",
         description: "Failed to remove team member",
       });
-      console.error(error);
     } finally {
       setIsLoading(false);
     }

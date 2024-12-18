@@ -7,6 +7,7 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+const logger = require("../../../logger");
 
 export default function AuthSetupPage() {
   const searchParams = useSearchParams();
@@ -23,7 +24,7 @@ export default function AuthSetupPage() {
         const orgName = searchParams.get("orgName");
 
         if (!email || !orgName) {
-          console.error("Missing email or organization name");
+          logger.error("Missing email or organization name");
           toast({
             title: "Error",
             description: "Missing required information. Please try again.",
@@ -44,7 +45,7 @@ export default function AuthSetupPage() {
           return;
         }
 
-        console.log('Setting up user:', {
+        logger.info('Setting up user:', {
           email: email.toLowerCase(),
           clerkId: user.id,
           orgName: decodeURIComponent(orgName)
@@ -66,7 +67,7 @@ export default function AuthSetupPage() {
         // Force a hard redirect to dashboard
         window.location.replace("/dashboard");
       } catch (error) {
-        console.error("Error during setup:", error);
+        logger.error("Error during setup:", error);
         toast({
           title: "Error",
           description: "Failed to set up your account. Please try again.",

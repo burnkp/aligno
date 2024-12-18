@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+const logger = require("../../logger");
 
 interface KPIsListProps {
   objectiveId: Id<"strategicObjectives">;
@@ -40,7 +41,7 @@ export function KPIsList({ objectiveId }: KPIsListProps) {
       setEditingId(null);
       setEditValue("");
     } catch (error) {
-      console.error("Failed to update KPI:", error);
+      logger.error("Failed to update KPI:", error);
     }
   };
 

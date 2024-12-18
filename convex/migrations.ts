@@ -1,5 +1,6 @@
 import { mutation } from "./_generated/server";
 import { DatabaseReader, DatabaseWriter } from "./_generated/server";
+const logger = require("../../logger");
 
 export const migrateKPIs = mutation({
   args: {},
@@ -142,7 +143,7 @@ export const fixTeamsTable = mutation({
         .first();
       
       if (!creator || creator.organizationId === "SYSTEM") {
-        console.warn(`Could not find valid organization for team ${team._id}`);
+        logger.warn(`Could not find valid organization for team ${team._id}`);
         continue;
       }
 

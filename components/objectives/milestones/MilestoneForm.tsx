@@ -19,6 +19,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useToast } from "@/hooks/use-toast";
+const logger = require("../../../logger");
 
 const formSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters"),
@@ -65,7 +66,7 @@ export function MilestoneForm({ objectiveId, onSuccess }: MilestoneFormProps) {
       form.reset();
       onSuccess?.();
     } catch (error) {
-      console.error(error);
+      logger.error(error);
       toast({
         title: "Error",
         description: "Failed to create milestone",

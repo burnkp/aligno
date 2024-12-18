@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { checkPermission, isSuperAdmin, logAuditEvent } from "./lib/permissions";
+const logger = require("../../logger");
 
 /**
  * Create a new organization
@@ -70,9 +71,8 @@ export const createOrganization = mutation({
 
       return organizationId;
     } catch (error) {
-      // Log the error and throw a user-friendly message
-      console.error("Failed to create organization:", error);
-      throw new Error("Failed to create organization. Please try again.");
+      logger.error("Failed to create organization:", error);
+      throw error;
     }
   },
 });

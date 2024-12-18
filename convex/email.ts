@@ -3,6 +3,7 @@ import { mutation, query, action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { Resend } from 'resend';
+const logger = require("../../logger");
 
 // Define the mutation args type
 const logEmailAttemptArgs = {
@@ -48,18 +49,18 @@ export const sendInvitation = action({
     invitationToken: v.string(),
   },
   handler: async (ctx, args) => {
-    console.log("Starting sendInvitation action with args:", args);
+    logger.info("Starting sendInvitation action with args:", args);
     
     const apiKey = process.env.RESEND_API_KEY;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
     
     if (!apiKey) {
-      console.error("RESEND_API_KEY is not configured");
+      logger.error("RESEND_API_KEY is not configured");
       throw new Error("Email service not configured");
     }
 
     if (!appUrl) {
-      console.error("NEXT_PUBLIC_APP_URL is not configured");
+      logger.error("NEXT_PUBLIC_APP_URL is not configured");
       throw new Error("App URL not configured");
     }
 
@@ -67,8 +68,8 @@ export const sendInvitation = action({
       const resend = new Resend(apiKey);
       const invitationLink = `${appUrl}/invite/${args.invitationToken}`;
       
-      console.log("Sending invitation email to:", args.email);
-      console.log("Invitation link:", invitationLink);
+      logger.info("Sending invitation email to:", args.email);
+      logger.info("Invitation link:", invitationLink);
 
       const { data, error } = await resend.emails.send({
         from: 'Aligno <onboarding@resend.dev>',
@@ -85,7 +86,7 @@ export const sendInvitation = action({
         `,
       });
 
-      console.log("Resend response:", { data, error });
+      logger.info("Resend response:", { data, error });
 
       if (error) {
         throw new Error(`Failed to send email: ${JSON.stringify(error)}`);
@@ -93,7 +94,7 @@ export const sendInvitation = action({
 
       return { success: true, data };
     } catch (error) {
-      console.error("Email sending error:", error);
+      logger.error("Email sending error:", error);
       throw error;
     }
   },

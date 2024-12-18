@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Id } from "@convex/_generated/dataModel";
+const logger = require("../../logger");
 
 interface CreateUserModalProps {
   isOpen: boolean;
@@ -74,12 +75,12 @@ export const CreateUserModal = ({ isOpen, onClose }: CreateUserModalProps) => {
         organizationId: "",
       });
     } catch (error) {
+      logger.error(error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to create user",
         variant: "destructive",
       });
-      console.error(error);
     } finally {
       setIsLoading(false);
     }

@@ -7,6 +7,7 @@ import * as z from "zod";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
+const logger = require("../../logger");
 
 import {
   Dialog,
@@ -97,7 +98,7 @@ export function CreateTeamModal({ isOpen, onClose }: CreateTeamModalProps) {
       form.reset();
       onClose();
     } catch (error) {
-      console.error(error);
+      logger.error(error);
       toast({
         title: "Error",
         description: "Failed to create team",

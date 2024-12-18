@@ -19,6 +19,7 @@ import {
 import { Input } from "../ui/input";
 import { useToast } from "../ui/use-toast";
 import { Id } from "@/convex/_generated/dataModel";
+const logger = require("../../logger");
 
 const formSchema = z.object({
   currentValue: z.number().min(0).max(100),
@@ -69,12 +70,12 @@ export function UpdateKPIModal({ isOpen, onClose, kpi }: UpdateKPIModalProps) {
 
       onClose();
     } catch (error) {
+      logger.error(error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to update KPI",
         variant: "destructive",
       });
-      console.error(error);
     } finally {
       setIsLoading(false);
     }

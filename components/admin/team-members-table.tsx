@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { UserPlus } from "lucide-react";
 import { AddTeamMemberModal } from "./add-team-member-modal";
+const logger = require("../../logger");
 
 interface TeamMember {
   userId: string;
@@ -36,7 +37,7 @@ export function TeamMembersTable({ teamId, members }: TeamMembersTableProps) {
     try {
       await removeMember({ teamId, userId });
     } catch (error) {
-      console.error("Failed to remove member:", error);
+      logger.error("Failed to remove member:", error);
     }
   };
 

@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+const logger = require("../logger");
 
 if (!process.env.RESEND_API_KEY) {
   throw new Error('RESEND_API_KEY is not defined in environment variables');
@@ -53,7 +54,7 @@ export async function sendWelcomeEmail({
     // At this point, response is successful and has an id
     const data = response as { id: string };
 
-    console.log('Email sent successfully:', {
+    logger.info('Email sent successfully:', {
       emailId: data.id,
       to: email,
       setupUrl: signInUrl.toString()
@@ -61,7 +62,7 @@ export async function sendWelcomeEmail({
 
     return { success: true, data: { id: data.id } };
   } catch (error) {
-    console.error('Failed to send welcome email:', error);
+    logger.error('Failed to send welcome email:', error);
     return { 
       success: false, 
       error: error instanceof Error ? error : new Error('Unknown error occurred')

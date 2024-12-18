@@ -1,3 +1,4 @@
+const logger = require("../../logger");
 import { query, action } from "./_generated/server";
 import { Resend } from 'resend';
 
@@ -8,7 +9,7 @@ export const checkEmailLogs = query({
       .query("emailLogs")
       .collect();
 
-    console.log("Found email logs:", logs);
+    logger.info("Found email logs:", logs);
 
     return {
       count: logs.length,
@@ -20,18 +21,18 @@ export const checkEmailLogs = query({
 export const testEmailConfig = action({
   args: {},
   handler: async (ctx) => {
-    console.log("Starting test email config...");
+    logger.info("Starting test email config...");
     const apiKey = process.env.RESEND_API_KEY;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
     
     if (!apiKey) {
-      console.error("Missing RESEND_API_KEY");
+      logger.error("Missing RESEND_API_KEY");
       return { success: false, error: "Missing API key" };
     }
 
     try {
       const resend = new Resend(apiKey);
-      console.log("Sending test email...");
+      logger.info("Sending test email...");
       const { data, error } = await resend.emails.send({
         from: 'Aligno <onboarding@resend.dev>',
         to: ['kushtrimpuka@gmail.com'],
@@ -39,7 +40,7 @@ export const testEmailConfig = action({
         html: '<p>This is a test email to verify the email configuration.</p>',
       });
 
-      console.log("Resend response:", { data, error });
+      logger.info("Resend response:", { data, error });
       return {
         success: !error,
         data,
@@ -49,7 +50,7 @@ export const testEmailConfig = action({
         appUrl
       };
     } catch (error) {
-      console.error("Test failed:", error);
+      logger.error("Test failed:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),

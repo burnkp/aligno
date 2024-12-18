@@ -7,6 +7,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Image from "next/image";
 import Link from "next/link";
+const logger = require("../../../logger");
 
 export const Hero = () => {
   const router = useRouter();
@@ -32,7 +33,7 @@ export const Hero = () => {
         }
       }
     } catch (error) {
-      console.error("Error navigating to dashboard:", error);
+      logger.error("Error navigating to dashboard:", error);
     }
   };
 

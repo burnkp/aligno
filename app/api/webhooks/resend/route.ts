@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
+const logger = require("../../../../logger");
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
     switch (payload.type) {
       case "email.delivered":
         // Log successful delivery
-        console.log("Email delivered:", payload.data);
+        logger.info("Email delivered:", payload.data);
         break;
       case "email.bounced":
         // Handle bounced email
@@ -39,12 +40,12 @@ export async function POST(request: Request) {
         });
         break;
       default:
-        console.log("Unhandled webhook event:", payload.type);
+        logger.info("Unhandled webhook event:", payload.type);
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Webhook error:", error);
+    logger.error("Webhook error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

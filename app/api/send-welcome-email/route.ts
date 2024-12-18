@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { sendWelcomeEmail } from "@/lib/email";
+const logger = require("../../../logger");
 
 export async function POST(request: Request) {
   try {
     // Log incoming request
-    console.log('Received welcome email request');
+    logger.info('Received welcome email request');
     
     const body = await request.json();
-    console.log('Request body:', body);
+    logger.info('Request body:', body);
     
     const { email, orgName, name } = body;
 
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
         name: !name,
       };
       
-      console.warn('Missing required fields:', missingFields);
+      logger.warn('Missing required fields:', missingFields);
       
       return NextResponse.json(
         { 
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
     }
 
     // Send welcome email
-    console.log('Sending welcome email to:', email);
+    logger.info('Sending welcome email to:', email);
     const result = await sendWelcomeEmail({
       email,
       orgName,
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
     });
 
     if (!result.success || !result.data?.id) {
-      console.error("Email sending failed:", {
+      logger.error("Email sending failed:", {
         error: result.error,
         email,
         orgName,
@@ -60,7 +61,7 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log('Welcome email sent successfully:', {
+    logger.info('Welcome email sent successfully:', {
       email,
       emailId: result.data.id,
     });
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
       }
     });
   } catch (error) {
-    console.error("Error in welcome email API route:", {
+    logger.error("Error in welcome email API route:", {
       error,
       stack: error instanceof Error ? error.stack : undefined,
     });

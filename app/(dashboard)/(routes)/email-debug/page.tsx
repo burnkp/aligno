@@ -5,6 +5,7 @@ import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+const logger = require("../../../../logger");
 
 export default function EmailDebugPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -18,7 +19,7 @@ export default function EmailDebugPage() {
       const result = await testConfig();
       setTestResult(result);
     } catch (error) {
-      console.error("Test failed:", error);
+      logger.error("Test failed:", error);
       setTestResult({ error });
     } finally {
       setIsLoading(false);

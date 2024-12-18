@@ -2,6 +2,7 @@ import { query } from "./_generated/server";
 import { action } from "./_generated/server";
 import { Resend } from 'resend';
 import { v } from "convex/values";
+const logger = require("../../logger");
 
 export const get = query({
   args: {},
@@ -22,10 +23,10 @@ export const testResend = action({
   args: {},
   handler: async (ctx) => {
     try {
-      console.log("Testing Resend configuration...");
+      logger.info("Testing Resend configuration...");
       const apiKey = process.env.RESEND_API_KEY;
-      console.log("API Key available:", !!apiKey);
-      console.log("API Key prefix:", apiKey?.substring(0, 5));
+      logger.info("API Key available:", !!apiKey);
+      logger.info("API Key prefix:", apiKey?.substring(0, 5));
 
       const resend = new Resend(apiKey);
       
@@ -36,7 +37,7 @@ export const testResend = action({
         html: "<p>This is a test email to verify Resend configuration.</p>",
       });
 
-      console.log("Resend test response:", { data, error });
+      logger.info("Resend test response:", { data, error });
       
       return {
         success: !error,
@@ -46,7 +47,7 @@ export const testResend = action({
         apiKeyPrefix: apiKey?.substring(0, 5),
       };
     } catch (error) {
-      console.error("Resend test error:", error);
+      logger.error("Resend test error:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
