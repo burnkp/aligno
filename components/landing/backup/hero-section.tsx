@@ -8,7 +8,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-const logger = require("../../../logger");
+import logger from "@/utils/logger";
 
 export function HeroSection() {
   const { isSignedIn, userId } = useAuth();

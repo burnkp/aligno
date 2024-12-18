@@ -6,8 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Id } from "../../convex/_generated/dataModel";
-import { logger } from "../../logger";
+import { Id } from "@/convex/_generated/dataModel";
+import logger from "@/utils/logger";
 
 import {
   Dialog,
