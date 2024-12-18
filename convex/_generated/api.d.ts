@@ -21,6 +21,7 @@ import type * as init from "../init.js";
 import type * as invitations from "../invitations.js";
 import type * as kpis from "../kpis.js";
 import type * as lib_audit from "../lib/audit.js";
+import type * as lib_logger from "../lib/logger.js";
 import type * as lib_permissions from "../lib/permissions.js";
 import type * as migrations from "../migrations.js";
 import type * as mutations_organizations from "../mutations/organizations.js";
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   invitations: typeof invitations;
   kpis: typeof kpis;
   "lib/audit": typeof lib_audit;
+  "lib/logger": typeof lib_logger;
   "lib/permissions": typeof lib_permissions;
   migrations: typeof migrations;
   "mutations/organizations": typeof mutations_organizations;

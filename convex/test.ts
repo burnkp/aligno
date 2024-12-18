@@ -2,7 +2,7 @@ import { query } from "./_generated/server";
 import { action } from "./_generated/server";
 import { Resend } from 'resend';
 import { v } from "convex/values";
-const logger = require("../../logger");
+import logger from "./lib/logger";
 
 export const get = query({
   args: {},

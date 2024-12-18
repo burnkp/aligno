@@ -1,6 +1,6 @@
 import { mutation } from "./_generated/server";
 import { DatabaseReader, DatabaseWriter } from "./_generated/server";
-const logger = require("../../logger");
+import logger from "./lib/logger";
 
 export const migrateKPIs = mutation({
   args: {},

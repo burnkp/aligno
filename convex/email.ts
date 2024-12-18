@@ -3,7 +3,7 @@ import { mutation, query, action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { Resend } from 'resend';
-const logger = require("../../logger");
+import logger from "./lib/logger";
 
 // Define the mutation args type
 const logEmailAttemptArgs = {

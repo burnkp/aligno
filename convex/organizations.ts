@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { checkPermission, isSuperAdmin, logAuditEvent } from "./lib/permissions";
-const logger = require("../../logger");
+import logger from "./lib/logger";
 
 /**
  * Create a new organization

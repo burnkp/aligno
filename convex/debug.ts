@@ -1,4 +1,4 @@
-const logger = require("../../logger");
+import logger from "./lib/logger";
 import { query, action } from "./_generated/server";
 import { Resend } from 'resend';
 

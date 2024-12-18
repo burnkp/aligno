@@ -1,35 +1,67 @@
 import { ConvexReactClient } from "convex/react";
-import { useAuth } from "@clerk/nextjs";
 const logger = require("./logger");
 
-export async function testProviderConfiguration() {
-  logger.info("Starting provider configuration test");
+interface TestResult {
+  success: boolean;
+  message: string;
+  details?: any;
+}
 
-  // Test Clerk configuration
+async function testClerkConfiguration(): Promise<TestResult> {
   try {
     logger.info("Testing Clerk configuration...");
     const requiredClerkVars = [
       'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY',
+      'CLERK_SECRET_KEY',
       'NEXT_PUBLIC_CLERK_SIGN_IN_URL',
       'NEXT_PUBLIC_CLERK_SIGN_UP_URL',
       'NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL',
       'NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL'
     ];
 
-    requiredClerkVars.forEach(varName => {
-      if (!process.env[varName]) {
-        throw new Error(`Missing Clerk environment variable: ${varName}`);
+    const missingVars = requiredClerkVars.filter(varName => !process.env[varName]);
+
+    if (missingVars.length > 0) {
+      return {
+        success: false,
+        message: `Missing Clerk environment variables: ${missingVars.join(", ")}`,
+      };
+    }
+
+    // Validate URL formats
+    const urlVars = [
+      'NEXT_PUBLIC_CLERK_SIGN_IN_URL',
+      'NEXT_PUBLIC_CLERK_SIGN_UP_URL',
+      'NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL',
+      'NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL'
+    ];
+
+    for (const varName of urlVars) {
+      const url = process.env[varName];
+      if (!url?.startsWith('/')) {
+        return {
+          success: false,
+          message: `Invalid URL format for ${varName}: URLs should start with /`,
+          details: { varName, value: url }
+        };
       }
-      logger.info(`✓ ${varName} is configured`);
-    });
+    }
 
-    logger.info("✓ Clerk configuration verified");
+    return {
+      success: true,
+      message: "Clerk configuration verified successfully",
+    };
   } catch (error) {
-    logger.error("❌ Clerk configuration test failed:", error);
-    throw error;
+    logger.error("Clerk configuration test failed:", error);
+    return {
+      success: false,
+      message: "Clerk configuration test failed",
+      details: error
+    };
   }
+}
 
-  // Test Convex configuration
+async function testConvexConfiguration(): Promise<TestResult> {
   try {
     logger.info("Testing Convex configuration...");
     const requiredConvexVars = [
@@ -37,23 +69,69 @@ export async function testProviderConfiguration() {
       'CONVEX_DEPLOYMENT'
     ];
 
-    requiredConvexVars.forEach(varName => {
-      if (!process.env[varName]) {
-        throw new Error(`Missing Convex environment variable: ${varName}`);
-      }
-      logger.info(`✓ ${varName} is configured`);
-    });
+    const missingVars = requiredConvexVars.filter(varName => !process.env[varName]);
+
+    if (missingVars.length > 0) {
+      return {
+        success: false,
+        message: `Missing Convex environment variables: ${missingVars.join(", ")}`,
+      };
+    }
+
+    // Validate Convex URL format
+    const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+    if (!convexUrl?.startsWith('https://')) {
+      return {
+        success: false,
+        message: "Invalid Convex URL format: URL should start with https://",
+        details: { value: convexUrl }
+      };
+    }
 
     // Test Convex client initialization
-    const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL as string);
-    logger.info("✓ Convex client initialized successfully");
-
-    logger.info("✓ Convex configuration verified");
+    const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL);
+    
+    return {
+      success: true,
+      message: "Convex configuration verified successfully",
+    };
   } catch (error) {
-    logger.error("❌ Convex configuration test failed:", error);
-    throw error;
+    logger.error("Convex configuration test failed:", error);
+    return {
+      success: false,
+      message: "Convex configuration test failed",
+      details: error
+    };
   }
+}
 
-  logger.info("✓ All provider configurations verified successfully");
-  return true;
+export async function testProviderConfiguration(): Promise<TestResult> {
+  logger.info("Starting provider configuration test");
+
+  try {
+    // Test Clerk configuration
+    const clerkResult = await testClerkConfiguration();
+    if (!clerkResult.success) {
+      return clerkResult;
+    }
+
+    // Test Convex configuration
+    const convexResult = await testConvexConfiguration();
+    if (!convexResult.success) {
+      return convexResult;
+    }
+
+    logger.info("✓ All provider configurations verified successfully");
+    return {
+      success: true,
+      message: "All provider configurations verified successfully"
+    };
+  } catch (error) {
+    logger.error("Provider configuration test failed:", error);
+    return {
+      success: false,
+      message: "Provider configuration test failed",
+      details: error
+    };
+  }
 } 

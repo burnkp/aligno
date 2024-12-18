@@ -8,16 +8,12 @@ const logger = require("../../logger");
 
 // Verify environment variables at initialization
 const verifyEnvironmentVariables = () => {
-  const missingVars = [];
   if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
-    missingVars.push("NEXT_PUBLIC_CONVEX_URL");
-  }
-
-  if (missingVars.length > 0) {
-    const error = `Missing required environment variables: ${missingVars.join(", ")}`;
+    const error = "Missing NEXT_PUBLIC_CONVEX_URL environment variable";
     logger.error(error);
     throw new Error(error);
   }
+  logger.info("Environment variables verified successfully");
 };
 
 // Initialize Convex client

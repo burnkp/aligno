@@ -6,53 +6,57 @@ import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { useAuth } from "@clerk/nextjs";
 const logger = require("../../logger");
 
-// Verify environment variables at initialization
-const verifyEnvironmentVariables = () => {
-  const requiredVars = [
-    'NEXT_PUBLIC_CONVEX_URL',
-    'CONVEX_DEPLOYMENT'
-  ];
+interface ConvexClientProviderProps {
+  children: ReactNode;
+}
 
-  const missingVars = requiredVars.filter(varName => !process.env[varName]);
-
-  if (missingVars.length > 0) {
-    const error = `Missing required Convex environment variables: ${missingVars.join(", ")}`;
+// Validate environment variables
+const validateEnvironmentVariables = () => {
+  if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
+    const error = "Missing NEXT_PUBLIC_CONVEX_URL environment variable";
     logger.error(error);
     throw new Error(error);
   }
 
-  logger.info("ConvexClientProvider: All required environment variables verified");
-  logger.info("ConvexClientProvider: Using Convex deployment:", process.env.CONVEX_DEPLOYMENT);
-  logger.info("ConvexClientProvider: Convex URL configured as:", process.env.NEXT_PUBLIC_CONVEX_URL);
+  logger.info("ConvexClientProvider: Environment variables validated successfully");
 };
 
-// Initialize Convex client
-let convex: ConvexReactClient;
-try {
-  verifyEnvironmentVariables();
-  convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL as string);
-  logger.info("ConvexClientProvider: Convex client initialized successfully");
-} catch (error) {
-  logger.error("ConvexClientProvider: Failed to initialize Convex client:", error);
-  throw error;
-}
+// Initialize Convex client with error handling
+const initializeConvexClient = (): ConvexReactClient => {
+  if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
+    const error = "Missing NEXT_PUBLIC_CONVEX_URL environment variable";
+    logger.error(error);
+    throw new Error(error);
+  }
 
-export function ConvexClientProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
+  try {
+    const client = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL);
+    logger.info("ConvexClientProvider: Client initialized successfully");
+    return client;
+  } catch (error) {
+    logger.error("ConvexClientProvider: Failed to initialize client:", error);
+    throw error;
+  }
+};
+
+// Initialize the client
+const convex = initializeConvexClient();
+
+export function ConvexClientProvider({ children }: ConvexClientProviderProps) {
   useEffect(() => {
     logger.info("ConvexClientProvider: Component mounted");
     
-    // Additional runtime checks
     try {
-      verifyEnvironmentVariables();
-      logger.info("ConvexClientProvider: Runtime environment verification successful");
+      validateEnvironmentVariables();
+      logger.info("ConvexClientProvider: Runtime verification successful");
     } catch (error) {
       logger.error("ConvexClientProvider: Runtime verification failed:", error);
       throw error;
     }
+
+    return () => {
+      logger.info("ConvexClientProvider: Component unmounting");
+    };
   }, []);
 
   return (
