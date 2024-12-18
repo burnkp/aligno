@@ -208,7 +208,9 @@ export const getUserAnalytics = query({
 
     const requesterId = identity.subject;
     const isSuperAdminUser = await isSuperAdmin(ctx.db, requesterId);
-    const isOrgAdminUser = await isOrgAdmin(ctx.db, requesterId, user.organizationId);
+    const isOrgAdminUser = user.organizationId !== "SYSTEM" 
+      ? await isOrgAdmin(ctx.db, requesterId, user.organizationId as Id<"organizations">) 
+      : false;
     const isSelf = requesterId === args.userId;
 
     // Only super admin, org admin, and the user themselves can view user analytics

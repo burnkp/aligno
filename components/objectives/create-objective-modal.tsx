@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "../../convex/_generated/dataModel";
 
 import {
   Dialog,
@@ -21,13 +22,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -36,47 +30,52 @@ import { useToast } from "@/hooks/use-toast";
 const formSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
-  teamId: z.string().min(1, "Please select a team"),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
 });
 
+type FormSchemaType = z.infer<typeof formSchema>;
+
 interface CreateObjectiveModalProps {
   isOpen: boolean;
   onClose: () => void;
-  teams: Array<{ _id: string; name: string }>;
+  teamId: Id<"teams">;
 }
 
-export function CreateObjectiveModal({ isOpen, onClose, teams }: CreateObjectiveModalProps) {
+export function CreateObjectiveModal({ isOpen, onClose, teamId }: CreateObjectiveModalProps) {
   const { toast } = useToast();
   const createObjective = useMutation(api.strategicObjectives.createStrategicObjective);
   const [isLoading, setIsLoading] = useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
       description: "",
-      teamId: "",
       startDate: new Date().toISOString().split("T")[0],
       endDate: "",
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const handleSubmit = async (values: FormSchemaType) => {
     try {
       setIsLoading(true);
-      await createObjective(values);
+      await createObjective({
+        ...values,
+        teamId,
+      });
       toast({
         title: "Success",
         description: "Strategic objective created successfully",
+        variant: "default",
       });
-      onClose();
       form.reset();
+      onClose();
     } catch (error) {
+      console.error(error);
       toast({
         title: "Error",
-        description: "Something went wrong",
+        description: "Failed to create strategic objective",
         variant: "destructive",
       });
     } finally {
@@ -91,7 +90,7 @@ export function CreateObjectiveModal({ isOpen, onClose, teams }: CreateObjective
           <DialogTitle>Create Strategic Objective</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="title"
@@ -117,30 +116,6 @@ export function CreateObjectiveModal({ isOpen, onClose, teams }: CreateObjective
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="teamId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Assigned Team</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a team" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {teams.map((team) => (
-                        <SelectItem key={team._id} value={team._id}>
-                          {team.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

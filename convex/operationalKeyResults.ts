@@ -6,7 +6,7 @@ export const createOperationalKeyResult = mutation({
     title: v.string(),
     description: v.string(),
     strategicObjectiveId: v.id("strategicObjectives"),
-    teamId: v.string(),
+    teamId: v.id("teams"),
     startDate: v.string(),
     endDate: v.string(),
   },
@@ -16,10 +16,15 @@ export const createOperationalKeyResult = mutation({
       throw new Error("Not authenticated");
     }
 
+    const now = new Date().toISOString();
+
     const okr = await ctx.db.insert("operationalKeyResults", {
       ...args,
       progress: 0,
+      status: "not_started",
       createdBy: identity.subject,
+      createdAt: now,
+      updatedAt: now,
     });
 
     return okr;

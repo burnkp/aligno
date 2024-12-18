@@ -31,7 +31,6 @@ export default function SignInPage() {
         initialValues={{
           emailAddress: email || "",
         }}
-        signUpUrl={null}
       />
     </div>
   );

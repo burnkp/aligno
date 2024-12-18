@@ -4,15 +4,15 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useUser } from "@clerk/nextjs";
 
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -28,9 +28,11 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 
 const formSchema = z.object({
-  name: z.string().min(2, "Team name must be at least 2 characters"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
   description: z.string().optional(),
 });
+
+type FormSchemaType = z.infer<typeof formSchema>;
 
 interface CreateTeamModalProps {
   isOpen: boolean;
@@ -39,10 +41,13 @@ interface CreateTeamModalProps {
 
 export function CreateTeamModal({ isOpen, onClose }: CreateTeamModalProps) {
   const { toast } = useToast();
-  const createTeam = useMutation(api.teams.createTeam);
+  const { user } = useUser();
   const [isLoading, setIsLoading] = useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const createTeam = useMutation(api.teams.createTeam);
+  const organizations = useQuery(api.organizations.getAllOrganizations);
+
+  const form = useForm<FormSchemaType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
@@ -50,23 +55,54 @@ export function CreateTeamModal({ isOpen, onClose }: CreateTeamModalProps) {
     },
   });
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const handleSubmit = async (values: FormSchemaType) => {
+    if (!user || !organizations || organizations.length === 0) return;
+
+    // Get user's primary email and full name from Clerk
+    const primaryEmail = user.emailAddresses.find(
+      email => email.id === user.primaryEmailAddressId
+    )?.emailAddress;
+
+    if (!primaryEmail) {
+      toast({
+        title: "Error",
+        description: "User email not found",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsLoading(true);
-      await createTeam(values);
+      const now = new Date().toISOString();
+
+      await createTeam({
+        ...values,
+        organizationId: organizations[0]._id,
+        leaderId: user.id,
+        members: [{
+          userId: user.id,
+          email: primaryEmail,
+          name: user.fullName || user.firstName || "Unknown",
+          role: "leader",
+          joinedAt: now,
+        }],
+      });
+
       toast({
         title: "Success",
         description: "Team created successfully",
+        variant: "default",
       });
-      onClose();
       form.reset();
+      onClose();
     } catch (error) {
+      console.error(error);
       toast({
         title: "Error",
-        description: "Something went wrong",
+        description: "Failed to create team",
         variant: "destructive",
       });
-      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -74,21 +110,18 @@ export function CreateTeamModal({ isOpen, onClose }: CreateTeamModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Create New Team</DialogTitle>
-          <DialogDescription>
-            Create a new team and start collaborating with your colleagues.
-          </DialogDescription>
+          <DialogTitle>Create Team</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Team Name</FormLabel>
+                  <FormLabel>Name</FormLabel>
                   <FormControl>
                     <Input placeholder="Enter team name" {...field} />
                   </FormControl>
@@ -101,7 +134,7 @@ export function CreateTeamModal({ isOpen, onClose }: CreateTeamModalProps) {
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description (Optional)</FormLabel>
+                  <FormLabel>Description</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Enter team description"
@@ -116,11 +149,7 @@ export function CreateTeamModal({ isOpen, onClose }: CreateTeamModalProps) {
               <Button variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
-                disabled={isLoading}
-                className="bg-purple-600 hover:bg-purple-700"
-              >
+              <Button type="submit" disabled={isLoading}>
                 Create Team
               </Button>
             </div>

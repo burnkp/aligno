@@ -6,13 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Button } from "../ui/button";
 import {
   Form,
   FormControl,
@@ -20,29 +15,33 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
+} from "../ui/form";
+import { Input } from "../ui/input";
+import { useToast } from "../ui/use-toast";
+import { Id } from "@/convex/_generated/dataModel";
 
 const formSchema = z.object({
-  currentValue: z.number().min(0),
+  currentValue: z.number().min(0).max(100),
 });
+
+interface KPI {
+  _id: Id<"kpis">;
+  title: string;
+  description: string;
+  currentValue: number;
+  targetValue: number;
+  progress: number;
+}
 
 interface UpdateKPIModalProps {
   isOpen: boolean;
   onClose: () => void;
-  kpi: {
-    _id: string;
-    title: string;
-    currentValue: number;
-    targetValue: number;
-  };
+  kpi: KPI;
 }
 
 export function UpdateKPIModal({ isOpen, onClose, kpi }: UpdateKPIModalProps) {
   const { toast } = useToast();
-  const updateKPI = useMutation(api.kpis.updateKPIValue);
+  const updateKPI = useMutation(api.kpis.updateKPI);
   const [isLoading, setIsLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -55,21 +54,27 @@ export function UpdateKPIModal({ isOpen, onClose, kpi }: UpdateKPIModalProps) {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setIsLoading(true);
+
       await updateKPI({
-        id: kpi._id,
-        currentValue: Number(values.currentValue),
+        kpiId: kpi._id,
+        updates: {
+          currentValue: values.currentValue,
+        },
       });
+
       toast({
         title: "Success",
         description: "KPI value updated successfully",
       });
+
       onClose();
     } catch (error) {
       toast({
         title: "Error",
-        description: "Something went wrong",
+        description: error instanceof Error ? error.message : "Failed to update KPI",
         variant: "destructive",
       });
+      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -77,7 +82,7 @@ export function UpdateKPIModal({ isOpen, onClose, kpi }: UpdateKPIModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[400px]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Update KPI Value</DialogTitle>
         </DialogHeader>
@@ -85,10 +90,9 @@ export function UpdateKPIModal({ isOpen, onClose, kpi }: UpdateKPIModalProps) {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
               <h3 className="font-medium">{kpi.title}</h3>
-              <p className="text-sm text-muted-foreground">
-                Target Value: {kpi.targetValue}
-              </p>
+              <p className="text-sm text-muted-foreground">{kpi.description}</p>
             </div>
+
             <FormField
               control={form.control}
               name="currentValue"
@@ -96,22 +100,30 @@ export function UpdateKPIModal({ isOpen, onClose, kpi }: UpdateKPIModalProps) {
                 <FormItem>
                   <FormLabel>Current Value</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="number" 
-                      {...field} 
-                      onChange={e => field.onChange(Number(e.target.value))}
+                    <Input
+                      {...field}
+                      type="number"
+                      min="0"
+                      max="100"
+                      onChange={(e) => field.onChange(Number(e.target.value))}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <div className="flex justify-end space-x-3">
-              <Button variant="outline" onClick={onClose}>
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={isLoading}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={isLoading}>
-                Update Value
+                {isLoading ? "Updating..." : "Update Value"}
               </Button>
             </div>
           </form>

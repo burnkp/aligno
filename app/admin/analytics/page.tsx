@@ -26,10 +26,6 @@ export default function AnalyticsPage() {
     );
   }
 
-  // For now, we'll show analytics for the first organization
-  // TODO: Add organization selector
-  const organizationId = organizations[0]._id;
-
   return (
     <div className="container mx-auto py-10">
       <PageHeader
@@ -37,7 +33,7 @@ export default function AnalyticsPage() {
         description="Track and analyze system usage and performance metrics."
       />
       <Separator className="my-6" />
-      <AnalyticsOverview organizationId={organizationId} />
+      <AnalyticsOverview />
     </div>
   );
 } 

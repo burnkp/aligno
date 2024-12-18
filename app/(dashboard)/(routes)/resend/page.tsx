@@ -5,11 +5,31 @@ import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { Id } from "@/convex/_generated/dataModel";
+
+interface EmailLog {
+  _id: Id<any>;
+  email: string;
+  teamId: string;
+  status: string;
+  error?: string;
+  details?: string;
+  timestamp: string;
+  environment: string;
+}
 
 export default function ResendLogsPage() {
-  const logs = useQuery(api.email.getLogs);
-
-  console.log("Raw logs:", logs);
+  const rawLogs = useQuery(api.email.getLogs);
+  const logs = rawLogs?.map((log: any) => ({
+    _id: log._id,
+    email: log.email || "",
+    teamId: log.teamId || "",
+    status: log.status || "unknown",
+    error: log.error,
+    details: log.details,
+    timestamp: log.timestamp || new Date().toISOString(),
+    environment: log.environment || "development",
+  })) as EmailLog[] | undefined;
 
   if (!logs || logs.length === 0) {
     return (
@@ -34,7 +54,8 @@ export default function ResendLogsPage() {
               <CardTitle className="flex items-center justify-between text-lg">
                 <span>{log.email}</span>
                 <Badge 
-                  variant={log.status === "sent" ? "success" : "destructive"}
+                  variant={log.status === "sent" ? "default" : "destructive"}
+                  className={log.status === "sent" ? "bg-green-500" : undefined}
                 >
                   {log.status}
                 </Badge>

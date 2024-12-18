@@ -96,6 +96,13 @@ export const updateOrganization = mutation({
     subscription: v.optional(
       v.object({
         plan: v.string(),
+        status: v.union(
+          v.literal("active"),
+          v.literal("inactive"),
+          v.literal("trial"),
+          v.literal("expired"),
+          v.literal("pending")
+        ),
         startDate: v.string(),
         endDate: v.optional(v.string()),
       })

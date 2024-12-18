@@ -34,10 +34,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 
+interface Team {
+  _id: Id<"teams">;
+  name: string;
+}
+
 const formSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
-  teamId: z.string().min(1, "Please select a team"),
+  teamId: z.string().min(1, "Please select a team").transform((val) => val as Id<"teams">),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
 });
@@ -45,7 +50,7 @@ const formSchema = z.object({
 interface CreateOKRModalProps {
   isOpen: boolean;
   onClose: () => void;
-  teams: Array<{ _id: string; name: string }>;
+  teams: Team[];
   objectiveId: Id<"strategicObjectives">;
 }
 

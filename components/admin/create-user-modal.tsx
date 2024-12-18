@@ -50,9 +50,13 @@ export const CreateUserModal = ({ isOpen, onClose }: CreateUserModalProps) => {
     setIsLoading(true);
 
     try {
+      // Generate a temporary userId that will be updated when the user signs in
+      const tempUserId = `pending_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+
       await createUser({
+        userId: tempUserId,
         name: formData.name,
-        email: formData.email,
+        email: formData.email.toLowerCase(),
         role: formData.role,
         organizationId: formData.organizationId as Id<"organizations">,
       });
@@ -72,7 +76,7 @@ export const CreateUserModal = ({ isOpen, onClose }: CreateUserModalProps) => {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to create user",
+        description: error instanceof Error ? error.message : "Failed to create user",
         variant: "destructive",
       });
       console.error(error);

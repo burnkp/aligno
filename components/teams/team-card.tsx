@@ -1,172 +1,123 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { UserPlus, UserMinus, Trash2, Circle, CircleDot } from "lucide-react";
-import { InviteMemberModal } from "./invite-member-modal";
-import { RemoveMemberModal } from "./remove-member-modal";
-import { DeleteTeamModal } from "./delete-team-modal";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { TeamMember } from "@/types/teams";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/use-toast";
 import { getUserRole, canInviteMembers, canManageTeam } from "@/utils/permissions";
-import { cn } from "@/lib/utils";
+import { MoreHorizontal, UserPlus } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+interface TeamMember {
+  userId: string;
+  email: string;
+  name: string;
+  role: "leader" | "member" | "admin";
+  joinedAt: string;
+}
 
 interface TeamCardProps {
   id: Id<"teams">;
   name: string;
   description?: string;
   members: TeamMember[];
-  isMember: boolean;
+  onInvite?: () => void;
 }
 
-export function TeamCard({
-  id,
-  name,
-  description,
-  members,
-  isMember,
-}: TeamCardProps) {
-  const router = useRouter();
+export function TeamCard({ id, name, description, members, onInvite }: TeamCardProps) {
+  const { toast } = useToast();
   const { user } = useUser();
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [showRemoveMemberModal, setShowRemoveMemberModal] = useState(false);
-  const [showDeleteTeamModal, setShowDeleteTeamModal] = useState(false);
+  const deleteTeam = useMutation(api.teams.deleteTeam);
 
   if (!user) return null;
 
-  const userRole = isMember ? getUserRole({ _id: id, members } as any, user.id) : null;
+  const isMember = members.some(member => member.userId === user.id);
+  const userRole = isMember ? getUserRole(user.id, { members }) : null;
   const canInvite = userRole && canInviteMembers(userRole);
   const canManage = userRole && canManageTeam(userRole);
 
-  const handleViewTeam = () => {
-    router.push(`/dashboard/teams/${id}/profile`);
+  const handleDelete = async () => {
+    try {
+      await deleteTeam({ teamId: id });
+      toast({
+        title: "Success",
+        description: "Team deleted successfully",
+      });
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Error",
+        description: "Failed to delete team",
+        variant: "destructive",
+      });
+    }
   };
 
-  // Sort members to put team leader first
-  const sortedMembers = [...members].sort((a, b) => {
-    if (a.role === "admin") return -1;
-    if (b.role === "admin") return 1;
-    return 0;
-  });
-
   return (
-    <>
-      <Card className="hover:shadow-md transition-shadow bg-white">
-        <CardHeader className="pb-2">
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle className="text-xl font-semibold">{name}</CardTitle>
-              {description && (
-                <CardDescription className="mt-1 text-sm text-gray-500">
-                  {description}
-                </CardDescription>
-              )}
-            </div>
-            {isMember && (
-              <div className="flex gap-2">
-                {canInvite && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowInviteModal(true)}
-                    className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                  >
-                    <UserPlus className="h-4 w-4" />
-                  </Button>
-                )}
-                {canManage && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setShowRemoveMemberModal(true)}
-                      className="h-8 w-8 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                    >
-                      <UserMinus className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setShowDeleteTeamModal(true)}
-                      className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="mt-4">
-            <h3 className="text-sm font-medium text-gray-500 mb-3">Team Members</h3>
-            <div className="space-y-3">
-              {sortedMembers.map((member) => (
-                <div
-                  key={member.userId}
-                  className="flex items-center gap-3"
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-xl font-bold">{name}</CardTitle>
+        <div className="flex items-center space-x-2">
+          {canInvite && (
+            <Button
+              onClick={onInvite}
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+            >
+              <UserPlus className="h-4 w-4" />
+            </Button>
+          )}
+          {canManage && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
                 >
-                  {member.role === "admin" ? (
-                    <CircleDot className="h-4 w-4 text-purple-600 flex-shrink-0" />
-                  ) : (
-                    <Circle className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                  )}
-                  <div>
-                    <p className={cn(
-                      "text-sm",
-                      member.role === "admin" && "font-medium"
-                    )}>
-                      {member.name}
-                      {member.role === "admin" && (
-                        <span className="ml-2 text-xs text-purple-600">(Team Leader)</span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={handleDelete}
+                >
+                  Delete Team
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {description && (
+          <p className="text-sm text-muted-foreground mb-4">{description}</p>
+        )}
+        <div className="space-y-2">
+          <div className="text-sm font-medium">Members ({members.length})</div>
+          <div className="flex flex-wrap gap-2">
+            {members.map((member) => (
+              <Badge
+                key={member.userId}
+                variant={member.role === "leader" ? "default" : "secondary"}
+              >
+                {member.name}
+              </Badge>
+            ))}
           </div>
-        </CardContent>
-        <CardFooter>
-          <Button
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-            onClick={handleViewTeam}
-          >
-            View Team
-          </Button>
-        </CardFooter>
-      </Card>
-
-      {showInviteModal && (
-        <InviteMemberModal
-          isOpen={showInviteModal}
-          onClose={() => setShowInviteModal(false)}
-          teamId={id}
-        />
-      )}
-
-      {showRemoveMemberModal && (
-        <RemoveMemberModal
-          isOpen={showRemoveMemberModal}
-          onClose={() => setShowRemoveMemberModal(false)}
-          teamId={id}
-          members={members}
-          currentUserId={user.id}
-        />
-      )}
-
-      {showDeleteTeamModal && (
-        <DeleteTeamModal
-          isOpen={showDeleteTeamModal}
-          onClose={() => setShowDeleteTeamModal(false)}
-          teamId={id}
-          teamName={name}
-        />
-      )}
-    </>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

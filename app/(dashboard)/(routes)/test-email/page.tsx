@@ -7,19 +7,30 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 
+interface TestResult {
+  success: boolean;
+  error?: string;
+  data?: any;
+}
+
 export default function TestEmailPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<TestResult | null>(null);
   const testResend = useAction(api.test.testResend);
   const { toast } = useToast();
 
   const handleTest = async () => {
     try {
       setIsLoading(true);
-      const result = await testResend();
-      setResult(result);
+      const response = await testResend();
+      const testResult: TestResult = {
+        success: response.success,
+        error: typeof response.error === 'string' ? response.error : 'Failed to send test email',
+        data: response.data,
+      };
+      setResult(testResult);
       
-      if (result.success) {
+      if (testResult.success) {
         toast({
           title: "Test Successful",
           description: "Check your email inbox",
@@ -27,7 +38,7 @@ export default function TestEmailPage() {
       } else {
         toast({
           title: "Test Failed",
-          description: result.error || "Failed to send test email",
+          description: testResult.error,
           variant: "destructive",
         });
       }

@@ -20,7 +20,13 @@ export default defineSchema({
     status: v.union(v.literal("active"), v.literal("inactive")),
     subscription: v.object({
       plan: v.string(),
-      status: v.string(),
+      status: v.union(
+        v.literal("active"),
+        v.literal("inactive"),
+        v.literal("trial"),
+        v.literal("expired"),
+        v.literal("pending")
+      ),
       startDate: v.string(),
       endDate: v.optional(v.string()),
     }),
@@ -39,7 +45,7 @@ export default defineSchema({
       v.literal("team_leader"),
       v.literal("team_member")
     ),
-    organizationId: v.union(v.literal("SYSTEM"), v.string()),
+    organizationId: v.union(v.literal("SYSTEM"), v.id("organizations")),
     createdAt: v.string(),
     updatedAt: v.string(),
   })
@@ -51,9 +57,9 @@ export default defineSchema({
   teams: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
-    organizationId: v.optional(v.string()),
-    leaderId: v.optional(v.string()),
-    createdBy: v.optional(v.string()),
+    organizationId: v.id("organizations"),
+    leaderId: v.string(),
+    createdBy: v.string(),
     settings: v.optional(
       v.object({
         isPrivate: v.boolean(),
@@ -64,17 +70,131 @@ export default defineSchema({
     members: v.array(
       v.object({
         userId: v.string(),
-        email: v.optional(v.string()),
-        name: v.optional(v.string()),
+        email: v.string(),
+        name: v.string(),
         role: v.union(v.literal("leader"), v.literal("member"), v.literal("admin")),
         joinedAt: v.string(),
       })
     ),
-    createdAt: v.optional(v.string()),
-    updatedAt: v.optional(v.string()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
   })
     .index("by_organization", ["organizationId"])
     .index("by_leader", ["leaderId"]),
+
+  // Strategic Objectives table - Stores high-level objectives
+  strategicObjectives: defineTable({
+    title: v.string(),
+    description: v.string(),
+    progress: v.number(),
+    status: v.union(
+      v.literal("not_started"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("blocked")
+    ),
+    startDate: v.string(),
+    endDate: v.string(),
+    teamId: v.id("teams"),
+    createdBy: v.string(),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_team", ["teamId"])
+    .index("by_date", ["startDate", "endDate"])
+    .index("by_status", ["status"]),
+
+  // Dependencies table - Stores relationships between objectives
+  dependencies: defineTable({
+    source: v.id("strategicObjectives"),
+    target: v.id("strategicObjectives"),
+    type: v.union(
+      v.literal("blocks"),
+      v.literal("depends_on"),
+      v.literal("related_to")
+    ),
+    createdBy: v.string(),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_source", ["source"])
+    .index("by_target", ["target"]),
+
+  // Operational Key Results table - Stores OKRs linked to strategic objectives
+  operationalKeyResults: defineTable({
+    title: v.string(),
+    description: v.string(),
+    progress: v.number(),
+    status: v.union(
+      v.literal("not_started"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("blocked")
+    ),
+    startDate: v.string(),
+    endDate: v.string(),
+    teamId: v.id("teams"),
+    strategicObjectiveId: v.id("strategicObjectives"),
+    createdBy: v.string(),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_team", ["teamId"])
+    .index("by_objective", ["strategicObjectiveId"])
+    .index("by_status", ["status"]),
+
+  // KPIs table - Stores key performance indicators
+  kpis: defineTable({
+    title: v.string(),
+    description: v.string(),
+    currentValue: v.number(),
+    targetValue: v.number(),
+    previousValue: v.optional(v.number()),
+    progress: v.number(),
+    status: v.union(
+      v.literal("not_started"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("at_risk")
+    ),
+    startDate: v.string(),
+    endDate: v.string(),
+    teamId: v.id("teams"),
+    operationalKeyResultId: v.id("operationalKeyResults"),
+    assignedTo: v.string(),
+    createdBy: v.string(),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_team", ["teamId"])
+    .index("by_okr", ["operationalKeyResultId"])
+    .index("by_assignee", ["assignedTo"])
+    .index("by_status", ["status"]),
+
+  // Invitations table - Stores team invitations
+  invitations: defineTable({
+    teamId: v.id("teams"),
+    email: v.string(),
+    name: v.string(),
+    role: v.union(v.literal("leader"), v.literal("member")),
+    token: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("expired"),
+      v.literal("bounced")
+    ),
+    expiresAt: v.string(),
+    createdAt: v.string(),
+    createdBy: v.string(),
+    acceptedAt: v.optional(v.string()),
+    acceptedBy: v.optional(v.string()),
+    updatedAt: v.string(),
+  })
+    .index("by_token", ["token"])
+    .index("by_email", ["email"])
+    .index("by_team", ["teamId"])
+    .index("by_status", ["status"]),
 
   // Audit logs table - Tracks important system events
   auditLogs: defineTable({
@@ -82,7 +202,41 @@ export default defineSchema({
     action: v.string(),
     resource: v.string(),
     details: v.any(),
-    organizationId: v.optional(v.string()),
+    organizationId: v.optional(v.id("organizations")),
     timestamp: v.string(),
   }).index("by_organization", ["organizationId"]),
+
+  // Email logs table - Tracks email delivery attempts and status
+  emailLogs: defineTable({
+    email: v.string(),
+    teamId: v.string(),
+    status: v.string(),
+    error: v.optional(v.string()),
+    details: v.optional(v.string()),
+    timestamp: v.string(),
+    environment: v.string(),
+  })
+    .index("by_email", ["email"])
+    .index("by_team", ["teamId"])
+    .index("by_status", ["status"]),
+
+  // Milestones table - Stores milestones for strategic objectives
+  milestones: defineTable({
+    objectiveId: v.id("strategicObjectives"),
+    title: v.string(),
+    description: v.string(),
+    dueDate: v.string(),
+    status: v.union(
+      v.literal("not_started"),
+      v.literal("in_progress"),
+      v.literal("completed"),
+      v.literal("blocked")
+    ),
+    createdBy: v.string(),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_objective", ["objectiveId"])
+    .index("by_status", ["status"])
+    .index("by_due_date", ["dueDate"]),
 });

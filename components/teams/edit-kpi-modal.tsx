@@ -3,33 +3,36 @@
 import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useToast } from "@/components/ui/use-toast";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Id } from "@/convex/_generated/dataModel";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+
+interface KPI {
+  _id: Id<"kpis">;
+  title: string;
+  description: string;
+  currentValue: number;
+  targetValue: number;
+  progress: number;
+  status: "not_started" | "in_progress" | "completed" | "at_risk";
+}
 
 interface EditKPIModalProps {
-  kpi: any; // Replace with proper KPI type
+  kpi: KPI;
   isOpen: boolean;
   onClose: () => void;
 }
 
 export function EditKPIModal({ kpi, isOpen, onClose }: EditKPIModalProps) {
   const { toast } = useToast();
-  const updateKPI = useMutation(api.kpis.update);
+  const updateKPI = useMutation(api.kpis.updateKPI);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     currentValue: kpi.currentValue,
     targetValue: kpi.targetValue,
-    description: kpi.description,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,19 +41,23 @@ export function EditKPIModal({ kpi, isOpen, onClose }: EditKPIModalProps) {
 
     try {
       await updateKPI({
-        id: kpi._id,
-        ...formData,
+        kpiId: kpi._id,
+        updates: {
+          currentValue: formData.currentValue,
+          targetValue: formData.targetValue,
+        },
       });
 
       toast({
-        title: "KPI updated",
-        description: "The KPI has been successfully updated.",
+        title: "Success",
+        description: "KPI updated successfully",
       });
       onClose();
     } catch (error) {
+      console.error(error);
       toast({
         title: "Error",
-        description: "Failed to update KPI. Please try again.",
+        description: "Failed to update KPI",
         variant: "destructive",
       });
     } finally {
@@ -62,7 +69,7 @@ export function EditKPIModal({ kpi, isOpen, onClose }: EditKPIModalProps) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Update KPI: {kpi.title}</DialogTitle>
+          <DialogTitle>Edit KPI: {kpi.title}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -71,10 +78,7 @@ export function EditKPIModal({ kpi, isOpen, onClose }: EditKPIModalProps) {
               id="currentValue"
               type="number"
               value={formData.currentValue}
-              onChange={(e) => setFormData(prev => ({
-                ...prev,
-                currentValue: parseFloat(e.target.value)
-              }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, currentValue: parseFloat(e.target.value) }))}
               required
             />
           </div>
@@ -84,37 +88,16 @@ export function EditKPIModal({ kpi, isOpen, onClose }: EditKPIModalProps) {
               id="targetValue"
               type="number"
               value={formData.targetValue}
-              onChange={(e) => setFormData(prev => ({
-                ...prev,
-                targetValue: parseFloat(e.target.value)
-              }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, targetValue: parseFloat(e.target.value) }))}
               required
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData(prev => ({
-                ...prev,
-                description: e.target.value
-              }))}
-            />
-          </div>
           <div className="flex justify-end space-x-2">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button variant="outline" onClick={onClose} type="button">
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                "Update KPI"
-              )}
+              {isLoading ? "Updating..." : "Update KPI"}
             </Button>
           </div>
         </form>

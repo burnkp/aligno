@@ -12,6 +12,24 @@ import { TeamSettingsForm } from "@/components/admin/team-settings-form";
 import { TeamActivityLog } from "@/components/admin/team-activity-log";
 import { Id } from "@convex/_generated/dataModel";
 
+interface TeamMember {
+  userId: string;
+  role: "leader" | "member";
+  joinedAt: string;
+}
+
+interface TeamSettings {
+  _id: Id<"teams">;
+  name: string;
+  description?: string;
+  leaderId: string;
+  settings?: {
+    isPrivate?: boolean;
+    allowMemberInvites?: boolean;
+    requireLeaderApproval?: boolean;
+  };
+}
+
 export default function TeamDetailsPage() {
   const params = useParams();
   const teamId = params.teamId as Id<"teams">;
@@ -24,6 +42,26 @@ export default function TeamDetailsPage() {
       </div>
     );
   }
+
+  // Transform members data to match TeamMembersTable's expected format
+  const transformedMembers: TeamMember[] = team.members.map(member => ({
+    userId: member.userId,
+    role: member.role === "admin" ? "leader" : "member",
+    joinedAt: member.joinedAt,
+  }));
+
+  // Transform team data to match TeamSettingsForm's expected format
+  const teamSettings: TeamSettings = {
+    _id: team._id,
+    name: team.name,
+    description: team.description,
+    leaderId: team.leaderId || team.members.find(m => m.role === "leader")?.userId || team.members[0].userId,
+    settings: {
+      isPrivate: team.settings?.isPrivate,
+      allowMemberInvites: team.settings?.allowMemberInvites,
+      requireLeaderApproval: team.settings?.requireLeaderApproval,
+    },
+  };
 
   return (
     <div className="container mx-auto py-10">
@@ -48,7 +86,7 @@ export default function TeamDetailsPage() {
                 <CardTitle>Team Members</CardTitle>
               </CardHeader>
               <CardContent>
-                <TeamMembersTable teamId={teamId} members={team.members} />
+                <TeamMembersTable teamId={teamId} members={transformedMembers} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -59,7 +97,7 @@ export default function TeamDetailsPage() {
                 <CardTitle>Team Settings</CardTitle>
               </CardHeader>
               <CardContent>
-                <TeamSettingsForm team={team} />
+                <TeamSettingsForm team={teamSettings} />
               </CardContent>
             </Card>
           </TabsContent>

@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       name,
     });
 
-    if (!result.success) {
+    if (!result.success || !result.data?.id) {
       console.error("Email sending failed:", {
         error: result.error,
         email,
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { 
           error: "Failed to send welcome email",
-          details: result.error instanceof Error ? result.error.message : "Unknown error",
+          details: result.error?.message || "Unknown error",
           code: "EMAIL_SEND_FAILED"
         },
         { status: 500 }
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       success: true,
       message: "Welcome email sent successfully",
       data: {
-        emailId: result.data.id,
+        emailId: result.data.id
       }
     });
   } catch (error) {

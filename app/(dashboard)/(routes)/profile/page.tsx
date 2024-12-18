@@ -6,18 +6,37 @@ import { api } from "@/convex/_generated/api";
 import { Loader2 } from "lucide-react";
 import { TeamDashboard } from "@/components/profile/team-dashboard";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Id } from "@/convex/_generated/dataModel";
+
+interface Team {
+  _id: Id<any>;
+  name: string;
+  description?: string;
+  organizationId?: string;
+  leaderId?: string;
+  members: Array<{
+    userId: string;
+    role: "leader" | "member";
+    joinedAt: string;
+  }>;
+}
 
 export default function ProfilePage() {
   const { user } = useUser();
-  const userTeams = useQuery(api.teams.getUserTeams);
+  const teams = useQuery(api.teams.getTeams) as Team[] | undefined;
 
-  if (!userTeams) {
+  if (!teams || !user) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
+
+  // Filter teams to only show those where the user is a member
+  const userTeams = teams.filter(team => 
+    team.members.some(member => member.userId === user.id)
+  );
 
   if (userTeams.length === 0) {
     return (

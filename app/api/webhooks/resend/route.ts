@@ -1,12 +1,22 @@
 import { NextResponse } from "next/server";
-import { WebhookEvent } from "@resend/webhooks";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
+interface ResendWebhookEvent {
+  type: "email.sent" | "email.delivered" | "email.delivery_delayed" | "email.bounced" | "email.complained";
+  data: {
+    to: string;
+    from: string;
+    subject?: string;
+    id: string;
+    created_at: string;
+  };
+}
+
 export async function POST(request: Request) {
-  const payload: WebhookEvent = await request.json();
+  const payload = await request.json() as ResendWebhookEvent;
   const signature = request.headers.get("resend-signature");
 
   if (!signature) {

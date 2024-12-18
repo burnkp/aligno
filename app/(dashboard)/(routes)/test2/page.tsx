@@ -7,16 +7,31 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 
+interface TestResult {
+  success: boolean;
+  error?: string;
+  data?: any;
+  apiKeyAvailable?: boolean;
+  apiKeyPrefix?: string;
+}
+
 export default function Test2Page() {
   const [isLoading, setIsLoading] = useState(false);
-  const [lastResult, setLastResult] = useState<any>(null);
-  const testEmail = useAction(api.test.testEmail);
+  const [lastResult, setLastResult] = useState<TestResult | null>(null);
+  const testResend = useAction(api.test.testResend);
   const { toast } = useToast();
 
   const handleTestEmail = async () => {
     try {
       setIsLoading(true);
-      const result = await testEmail();
+      const response = await testResend();
+      const result: TestResult = {
+        success: response.success,
+        error: typeof response.error === 'string' ? response.error : 'Failed to send test email',
+        data: response.data,
+        apiKeyAvailable: response.apiKeyAvailable,
+        apiKeyPrefix: response.apiKeyPrefix,
+      };
       setLastResult(result);
       
       if (result.success) {
@@ -27,7 +42,7 @@ export default function Test2Page() {
       } else {
         toast({
           title: "Error",
-          description: result.error || "Failed to send test email",
+          description: result.error,
           variant: "destructive",
         });
       }

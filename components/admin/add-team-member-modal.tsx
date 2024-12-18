@@ -29,7 +29,7 @@ interface AddTeamMemberModalProps {
 
 interface FormData {
   userId: string;
-  role: "leader" | "member";
+  role: "leader" | "member" | "admin";
 }
 
 export function AddTeamMemberModal({
@@ -52,9 +52,17 @@ export function AddTeamMemberModal({
     setIsLoading(true);
 
     try {
+      // Find the selected user to get their email and name
+      const selectedUser = users?.find(user => user.userId === formData.userId);
+      if (!selectedUser) {
+        throw new Error("Selected user not found");
+      }
+
       await addMember({
         teamId,
         userId: formData.userId,
+        email: selectedUser.email,
+        name: selectedUser.name,
         role: formData.role,
       });
 
@@ -115,7 +123,7 @@ export function AddTeamMemberModal({
               onValueChange={(value) =>
                 setFormData({
                   ...formData,
-                  role: value as "leader" | "member",
+                  role: value as "leader" | "member" | "admin",
                 })
               }
             >
@@ -125,6 +133,7 @@ export function AddTeamMemberModal({
               <SelectContent>
                 <SelectItem value="leader">Team Leader</SelectItem>
                 <SelectItem value="member">Team Member</SelectItem>
+                <SelectItem value="admin">Team Admin</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -68,6 +68,12 @@ export const CreateTeamModal = ({ isOpen, onClose }: CreateTeamModalProps) => {
     setIsLoading(true);
 
     try {
+      // Find the selected user to get their email and name
+      const leader = users?.find(user => user.userId === formData.leaderId);
+      if (!leader) {
+        throw new Error("Selected leader not found");
+      }
+
       await createTeam({
         name: formData.name,
         description: formData.description,
@@ -76,6 +82,8 @@ export const CreateTeamModal = ({ isOpen, onClose }: CreateTeamModalProps) => {
         members: [
           {
             userId: formData.leaderId,
+            email: leader.email,
+            name: leader.name,
             role: "leader",
             joinedAt: new Date().toISOString(),
           },

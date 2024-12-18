@@ -1,7 +1,19 @@
-'use client';
+"use client";
 
-import * as AspectRatioPrimitive from '@radix-ui/react-aspect-ratio';
+import { cn } from "@/lib/utils";
 
-const AspectRatio = AspectRatioPrimitive.Root;
+interface AspectRatioProps extends React.HTMLAttributes<HTMLDivElement> {
+  ratio?: number;
+}
 
-export { AspectRatio };
+export function AspectRatio({ ratio = 1, className, ...props }: AspectRatioProps) {
+  return (
+    <div
+      className={cn("relative w-full", className)}
+      style={{ paddingBottom: `${(1 / ratio) * 100}%` }}
+      {...props}
+    >
+      <div className="absolute inset-0">{props.children}</div>
+    </div>
+  );
+}

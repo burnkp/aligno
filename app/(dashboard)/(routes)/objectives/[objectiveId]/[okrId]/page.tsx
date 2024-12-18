@@ -11,19 +11,74 @@ import { Button } from "@/components/ui/button";
 import { KPICard } from "@/components/kpi/kpi-card";
 import { CreateKPIModal } from "@/components/kpi/create-kpi-modal";
 
+interface OKR {
+  _id: Id<"operationalKeyResults">;
+  title: string;
+  description: string;
+  progress: number;
+  startDate: string;
+  endDate: string;
+  teamId: Id<"teams">;
+  strategicObjectiveId: Id<"strategicObjectives">;
+}
+
+interface Team {
+  _id: Id<"teams">;
+  name: string;
+  description?: string;
+  organizationId?: string;
+  leaderId?: string;
+  members: Array<{
+    userId: string;
+    role: "leader" | "member";
+    joinedAt: string;
+  }>;
+}
+
+interface KPI {
+  _id: Id<"kpis">;
+  title: string;
+  description: string;
+  currentValue: number;
+  targetValue: number;
+  progress: number;
+  startDate: string;
+  endDate: string;
+  teamId: Id<"teams">;
+  assignedTo: string;
+}
+
 export default function OKRDetailsPage() {
   const params = useParams();
   const okrId = params.okrId as Id<"operationalKeyResults">;
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   
-  const okr = useQuery(api.operationalKeyResults.getOperationalKeyResults)?.find(
-    (obj) => obj._id === okrId
-  );
-  const teams = useQuery(api.teams.getTeams);
-  const kpis = useQuery(api.kpis.getKPIs, {
-    operationalKeyResultId: okrId,
+  const rawOkrs = useQuery(api.operationalKeyResults.getOperationalKeyResults, {
+    strategicObjectiveId: undefined,
   });
+
+  const okr = rawOkrs?.find((obj) => obj._id === okrId) as OKR | undefined;
+
+  const teams = useQuery(api.teams.getTeams) as Team[] | undefined;
+  const rawKpis = useQuery(api.kpis.getKPIs, {
+    operationalKeyResultId: okrId,
+    teamId: undefined,
+    assignedTo: undefined,
+  });
+
+  const kpis = rawKpis?.map((kpi) => ({
+    _id: kpi._id,
+    title: kpi.title,
+    description: kpi.description,
+    currentValue: kpi.currentValue,
+    targetValue: kpi.targetValue,
+    progress: kpi.progress,
+    startDate: kpi.startDate,
+    endDate: kpi.endDate,
+    teamId: kpi.teamId,
+    assignedTo: kpi.assignedTo,
+  })) as KPI[] | undefined;
 
   if (!okr) {
     return <div>Loading...</div>;
@@ -57,7 +112,6 @@ export default function OKRDetailsPage() {
       <CreateKPIModal 
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        teams={teams || []}
         okrId={okrId}
       />
     </div>

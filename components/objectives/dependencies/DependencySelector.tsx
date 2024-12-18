@@ -33,102 +33,135 @@ export const DependencySelector = ({ objectiveId }: DependencySelectorProps) => 
   const removeDependency = useMutation(api.strategicObjectives.removeDependency);
 
   if (!objective || !objectives || !dependencies) {
-    return <div>Loading dependencies...</div>;
+    return null;
   }
 
-  const availableObjectives = objectives.filter(
+  const connectedIds = new Set([
+    ...dependencies.sourceOf.map(dep => dep.target),
+    ...dependencies.targetOf.map(dep => dep.source)
+  ]);
+
+  const filteredObjectives = objectives.filter(
     (obj) =>
       obj._id !== objectiveId &&
-      !dependencies.some((dep) => dep._id === obj._id) &&
+      !connectedIds.has(obj._id) &&
       obj.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleSelect = async (selectedId: Id<"strategicObjectives">) => {
     await addDependency({
-      objectiveId,
-      dependsOnId: selectedId,
+      sourceId: objectiveId,
+      targetId: selectedId,
+      type: "depends_on",
     });
     setOpen(false);
-    setSearchQuery("");
   };
 
-  const handleRemove = async (dependencyId: Id<"strategicObjectives">) => {
+  const handleRemove = async (selectedId: Id<"strategicObjectives">) => {
     await removeDependency({
-      objectiveId,
-      dependsOnId: dependencyId,
+      sourceId: objectiveId,
+      targetId: selectedId,
     });
   };
+
+  // Get all dependencies as a flat array
+  const allDependencies = [
+    ...dependencies.sourceOf.map(dep => ({
+      ...dep,
+      objective: objectives.find(obj => obj._id === dep.target),
+      direction: 'outgoing' as const,
+    })),
+    ...dependencies.targetOf.map(dep => ({
+      ...dep,
+      objective: objectives.find(obj => obj._id === dep.source),
+      direction: 'incoming' as const,
+    })),
+  ];
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center space-x-4">
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={open}
-              className="justify-between"
-            >
-              Add dependency...
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[400px] p-4">
-            <div className="space-y-4">
-              <div className="flex items-center border rounded-md">
-                <Search className="w-4 h-4 mx-2 text-gray-500" />
-                <Input
-                  placeholder="Search objectives..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="border-0 focus-visible:ring-0"
-                />
-              </div>
-              {availableObjectives.length === 0 ? (
-                <div className="text-sm text-gray-500 text-center py-2">
-                  No objectives found
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {availableObjectives.map((objective) => (
-                    <Button
-                      key={objective._id}
-                      variant="ghost"
-                      className="w-full justify-start font-normal"
-                      onClick={() => handleSelect(objective._id)}
-                    >
-                      {objective.title}
-                    </Button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </PopoverContent>
-        </Popover>
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold">Dependencies</h3>
+        <Button onClick={() => setOpen(true)} variant="outline" size="sm">
+          Add Dependency
+        </Button>
       </div>
 
-      <div className="space-y-2">
-        {dependencies.map((dependency) => (
-          <div
-            key={dependency._id}
-            className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+      {allDependencies.length === 0 ? (
+        <div className="text-sm text-gray-500">No dependencies</div>
+      ) : (
+        <div className="space-y-2">
+          {allDependencies.map((dep) => {
+            if (!dep.objective) return null;
+            return (
+              <div
+                key={dep._id}
+                className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+              >
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium">
+                    {dep.direction === 'outgoing' ? 'Depends on' : 'Required by'}:
+                  </span>
+                  <span>{dep.objective.title}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRemove(
+                    dep.direction === 'outgoing' ? dep.target : dep.source
+                  )}
+                >
+                  Remove
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="justify-between"
           >
-            <div className="flex items-center space-x-2">
-              <span>{dependency.title}</span>
-              <Badge variant="secondary">
-                {Math.round(dependency.progress || 0)}%
-              </Badge>
+            Add dependency...
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[400px] p-4">
+          <div className="space-y-4">
+            <div className="flex items-center border rounded-md">
+              <Search className="w-4 h-4 mx-2 text-gray-500" />
+              <Input
+                placeholder="Search objectives..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="border-0 focus-visible:ring-0"
+              />
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleRemove(dependency._id)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            {filteredObjectives.length === 0 ? (
+              <div className="text-sm text-gray-500 text-center py-2">
+                No objectives found
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredObjectives.map((objective) => (
+                  <Button
+                    key={objective._id}
+                    variant="ghost"
+                    className="w-full justify-start font-normal"
+                    onClick={() => handleSelect(objective._id)}
+                  >
+                    {objective.title}
+                  </Button>
+                ))}
+              </div>
+            )}
           </div>
-        ))}
-      </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }; 

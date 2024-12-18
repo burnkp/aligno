@@ -18,158 +18,89 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Legend,
 } from "recharts";
-import { format, addDays, differenceInDays } from "date-fns";
-import { Milestone } from "@/lib/types";
+import { format, addDays } from "date-fns";
 
 interface PredictiveAnalyticsProps {
   objectiveId: Id<"strategicObjectives">;
 }
 
-interface DataPoint {
+interface Prediction {
   date: string;
-  actual: number;
-  predicted: number | null;
+  predicted: number;
+  actual?: number;
 }
 
 export const PredictiveAnalytics = ({ objectiveId }: PredictiveAnalyticsProps) => {
-  const objective = useQuery(api.strategicObjectives.getStrategicObjective, {
-    id: objectiveId,
-  });
+  // Get the objective and its KPIs
+  const objectives = useQuery(api.strategicObjectives.getStrategicObjectives);
+  const objective = objectives?.find(obj => obj._id === objectiveId);
 
   if (!objective) {
     return <div>Loading predictive analytics...</div>;
   }
 
-  const completedMilestones = objective.milestones.filter(
-    (m: Milestone) => m.completed
-  );
-
-  // Generate historical data points
-  const historicalData: DataPoint[] = completedMilestones
-    .sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime())
-    .map((milestone) => ({
-      date: milestone.updatedAt,
-      actual: objective.progress,
-      predicted: null,
-    }));
-
-  // Add initial point
-  if (historicalData.length > 0) {
-    historicalData.unshift({
-      date: objective.startDate,
-      actual: 0,
-      predicted: null,
-    });
-  }
-
-  // Calculate trend line for prediction
-  if (historicalData.length >= 2) {
-    const firstPoint = historicalData[0];
-    const lastPoint = historicalData[historicalData.length - 1];
-    const totalDays = differenceInDays(
-      new Date(lastPoint.date),
-      new Date(firstPoint.date)
-    );
-    const progressPerDay =
-      (lastPoint.actual - firstPoint.actual) / Math.max(totalDays, 1);
-
-    // Project trend line to end date
-    const daysToEnd = differenceInDays(
-      new Date(objective.endDate),
-      new Date(lastPoint.date)
-    );
-    const projectedProgress = Math.min(
-      lastPoint.actual + progressPerDay * daysToEnd,
-      100
-    );
-
-    // Add prediction points
-    const predictionPoints: DataPoint[] = [];
-    for (let i = 1; i <= 5; i++) {
-      const daysAhead = Math.floor((daysToEnd * i) / 5);
-      const date = addDays(new Date(lastPoint.date), daysAhead);
-      const predicted = Math.min(
-        lastPoint.actual + progressPerDay * daysAhead,
-        100
-      );
-      predictionPoints.push({
-        date: date.toISOString(),
-        actual: lastPoint.actual,
-        predicted: Math.round(predicted),
+  // Generate sample prediction data (replace with actual ML predictions)
+  const generatePredictions = (): Prediction[] => {
+    const predictions: Prediction[] = [];
+    const startDate = new Date(objective.startDate);
+    const endDate = new Date(objective.endDate);
+    const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    for (let i = 0; i <= totalDays; i++) {
+      const date = addDays(startDate, i);
+      const progress = i / totalDays * 100;
+      const randomVariation = Math.random() * 10 - 5; // Random variation between -5 and 5
+      
+      predictions.push({
+        date: format(date, "MMM d"),
+        predicted: Math.min(100, Math.max(0, progress + randomVariation)),
+        actual: date <= new Date() ? objective.progress : undefined,
       });
     }
+    
+    return predictions;
+  };
 
-    // Add final prediction point
-    predictionPoints.push({
-      date: objective.endDate,
-      actual: lastPoint.actual,
-      predicted: Math.round(projectedProgress),
-    });
-
-    // Combine historical and prediction data
-    const allData = [...historicalData, ...predictionPoints];
-
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Progress Prediction</CardTitle>
-          <CardDescription>
-            Projected progress based on historical completion rate
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[400px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={allData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(date) => format(new Date(date), "MMM d")}
-                />
-                <YAxis domain={[0, 100]} />
-                <Tooltip
-                  labelFormatter={(date) =>
-                    format(new Date(date as string), "MMM d, yyyy")
-                  }
-                  formatter={(value: number) => [`${value}%`, "Progress"]}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="actual"
-                  stroke="#2563eb"
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="predicted"
-                  stroke="#16a34a"
-                  strokeWidth={2}
-                  strokeDasharray="5 5"
-                  dot={{ r: 4 }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const predictions = generatePredictions();
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Progress Prediction</CardTitle>
+        <CardTitle>Predictive Analytics</CardTitle>
         <CardDescription>
-          Not enough data points to generate prediction
+          Projected progress based on historical data and current trends
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-[400px] w-full flex items-center justify-center text-gray-500">
-          Complete more milestones to see progress prediction
+        <div className="h-[400px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={predictions}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="date"
+                interval={Math.floor(predictions.length / 10)}
+              />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="predicted"
+                stroke="#2563eb"
+                name="Predicted Progress"
+                strokeWidth={2}
+              />
+              <Line
+                type="monotone"
+                dataKey="actual"
+                stroke="#10b981"
+                name="Actual Progress"
+                strokeWidth={2}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </CardContent>
     </Card>

@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -19,183 +18,115 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { useToast } from "@/hooks/use-toast";
 
-const milestoneSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string(),
-  dueDate: z.date(),
-  weight: z.number().min(0).max(100),
+const formSchema = z.object({
+  title: z.string().min(2, "Title must be at least 2 characters"),
+  description: z.string().min(10, "Description must be at least 10 characters"),
+  dueDate: z.string().min(1, "Due date is required"),
 });
 
-type MilestoneFormValues = z.infer<typeof milestoneSchema>;
+type FormValues = z.infer<typeof formSchema>;
 
 interface MilestoneFormProps {
   objectiveId: Id<"strategicObjectives">;
-  onClose: () => void;
-  onSuccess: () => void;
-  initialData?: MilestoneFormValues;
+  onSuccess?: () => void;
 }
 
-export const MilestoneForm = ({
-  objectiveId,
-  onClose,
-  onSuccess,
-  initialData,
-}: MilestoneFormProps) => {
+export function MilestoneForm({ objectiveId, onSuccess }: MilestoneFormProps) {
+  const { toast } = useToast();
   const createMilestone = useMutation(api.strategicObjectives.createMilestone);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<MilestoneFormValues>({
-    resolver: zodResolver(milestoneSchema),
-    defaultValues: initialData || {
-      name: "",
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      title: "",
       description: "",
-      dueDate: new Date(),
-      weight: 0,
+      dueDate: new Date().toISOString().split("T")[0],
     },
   });
 
-  const onSubmit = async (values: MilestoneFormValues) => {
+  const onSubmit = async (values: FormValues) => {
     try {
       setIsSubmitting(true);
       await createMilestone({
         objectiveId,
-        name: values.name,
+        title: values.title,
         description: values.description,
-        dueDate: values.dueDate.toISOString(),
-        weight: values.weight,
+        dueDate: values.dueDate,
+        status: "not_started",
       });
-      onSuccess();
+      toast({
+        title: "Success",
+        description: "Milestone created successfully",
+        variant: "default",
+      });
+      form.reset();
+      onSuccess?.();
     } catch (error) {
-      console.error("Failed to create milestone:", error);
+      console.error(error);
+      toast({
+        title: "Error",
+        description: "Failed to create milestone",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{initialData ? "Edit Milestone" : "Add Milestone"}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="dueDate"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Due Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-[240px] pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date: Date) =>
-                          date < new Date(new Date().setHours(0, 0, 0, 0))
-                        }
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="weight"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Weight (%)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      {...field}
-                      onChange={(e) => field.onChange(Number(e.target.value))}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Weight determines how much this milestone contributes to the
-                    overall objective progress
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex justify-end gap-4">
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : "Save Milestone"}
-              </Button>
-            </div>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="title"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Title</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter milestone title" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Enter milestone description"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="dueDate"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Due Date</FormLabel>
+              <FormControl>
+                <Input type="date" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="flex justify-end space-x-3">
+          <Button type="submit" disabled={isSubmitting}>
+            Create Milestone
+          </Button>
+        </div>
+      </form>
+    </Form>
   );
-}; 
+} 

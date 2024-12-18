@@ -7,7 +7,7 @@ import { format } from "date-fns";
 import { Id } from "@/convex/_generated/dataModel";
 
 interface InvitationLog {
-  _id: Id<"invitationLogs">;
+  _id: Id<any>;
   email: string;
   status: string;
   error?: string;
@@ -17,9 +17,16 @@ interface InvitationLog {
 }
 
 export default function InvitationLogsPage() {
-  const logs = useQuery(api.email.getLogs);
-  
-  console.log("Logs from query:", logs); // Debug log
+  const rawLogs = useQuery(api.email.getLogs);
+  const logs = rawLogs?.map((log: any) => ({
+    _id: log._id,
+    email: log.email || "",
+    status: log.status || "unknown",
+    error: log.error,
+    details: log.details,
+    timestamp: log.timestamp || new Date().toISOString(),
+    environment: log.environment || "development",
+  })) as InvitationLog[] | undefined;
 
   if (!logs || logs.length === 0) {
     return (
@@ -38,7 +45,7 @@ export default function InvitationLogsPage() {
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-8">Invitation Logs</h1>
       <div className="space-y-4">
-        {logs.map((log: InvitationLog) => (
+        {logs.map((log) => (
           <Card key={log._id}>
             <CardHeader>
               <CardTitle className="text-lg">

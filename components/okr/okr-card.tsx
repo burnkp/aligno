@@ -3,56 +3,62 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Target, Users } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
+import { Id } from "@/convex/_generated/dataModel";
+
+interface OKR {
+  _id: Id<"operationalKeyResults">;
+  title: string;
+  description: string;
+  progress: number;
+  startDate: string;
+  endDate: string;
+  teamId: Id<"teams">;
+  strategicObjectiveId: Id<"strategicObjectives">;
+}
+
+interface Team {
+  _id: Id<"teams">;
+  name: string;
+  description?: string;
+}
 
 interface OKRCardProps {
-  okr: {
-    _id: string;
-    title: string;
-    description: string;
-    progress: number;
-    startDate: string;
-    endDate: string;
-    teamId: string;
-  };
-  team?: {
-    name: string;
-  };
+  okr: OKR;
+  team?: Team;
 }
 
 export function OKRCard({ okr, team }: OKRCardProps) {
-  const timeLeft = formatDistanceToNow(new Date(okr.endDate), { addSuffix: true });
+  const startDate = new Date(okr.startDate);
+  const endDate = new Date(okr.endDate);
+  const progress = Math.round(okr.progress);
 
   return (
     <Link href={`/objectives/${okr.strategicObjectiveId}/${okr._id}`}>
       <Card className="hover:shadow-lg transition cursor-pointer">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-xl font-bold">{okr.title}</CardTitle>
-          <Target className="h-5 w-5 text-muted-foreground" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            {okr.description}
-          </p>
-          
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">{team?.name || "Loading..."}</span>
-            </div>
-            
-            <div className="space-y-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Progress</span>
-                <span className="font-medium">{okr.progress}%</span>
+          <div>
+            <CardTitle className="text-xl font-bold">{okr.title}</CardTitle>
+            {team && (
+              <div className="text-sm text-muted-foreground">
+                Team: {team.name}
               </div>
-              <Progress value={okr.progress} />
+            )}
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {format(startDate, "MMM d")} - {format(endDate, "MMM d, yyyy")}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-sm text-muted-foreground mb-4">
+            {okr.description}
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span>Progress</span>
+              <span className="font-medium">{progress}%</span>
             </div>
-
-            <div className="text-xs text-muted-foreground">
-              Due {timeLeft}
-            </div>
+            <Progress value={progress} />
           </div>
         </CardContent>
       </Card>

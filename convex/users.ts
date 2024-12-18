@@ -58,7 +58,7 @@ export const createUser = mutation({
     email: v.string(),
     name: v.string(),
     role: v.union(v.literal("super_admin"), v.literal("org_admin"), v.literal("team_leader"), v.literal("team_member")),
-    organizationId: v.union(v.literal("SYSTEM"), v.string()),
+    organizationId: v.union(v.literal("SYSTEM"), v.id("organizations")),
   },
   handler: async (ctx, args) => {
     // Check if user already exists
@@ -89,5 +89,72 @@ export const getAllUsers = query({
   handler: async (ctx) => {
     const users = await ctx.db.query("users").collect();
     return users;
+  },
+});
+
+export const updateUser = mutation({
+  args: {
+    userId: v.string(),
+    updates: v.object({
+      name: v.optional(v.string()),
+      email: v.optional(v.string()),
+      role: v.optional(v.union(
+        v.literal("super_admin"),
+        v.literal("org_admin"),
+        v.literal("team_leader"),
+        v.literal("team_member")
+      )),
+      organizationId: v.optional(v.union(v.literal("SYSTEM"), v.id("organizations"))),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Only super admin can update users
+    const currentUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("userId", identity.subject))
+      .first();
+
+    if (!currentUser || currentUser.role !== "super_admin") {
+      throw new Error("Only super admin can update users");
+    }
+
+    // Find the user to update
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("userId", args.userId))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // If email is being updated, check for uniqueness
+    if (args.updates.email !== undefined) {
+      const newEmail = args.updates.email.toLowerCase();
+      const existingUser = await ctx.db
+        .query("users")
+        .withIndex("by_email", (q) => q.eq("email", newEmail))
+        .first();
+
+      if (existingUser && existingUser._id !== user._id) {
+        throw new Error("Email already in use");
+      }
+
+      // Ensure email is stored in lowercase
+      args.updates.email = newEmail;
+    }
+
+    // Update the user
+    await ctx.db.patch(user._id, {
+      ...args.updates,
+      updatedAt: new Date().toISOString(),
+    });
+
+    return true;
   },
 }); 

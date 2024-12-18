@@ -6,7 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { PlusIcon } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
-import { columns } from "@/components/admin/teams-columns";
+import { columns, Team } from "@/components/admin/teams-columns";
 import { CreateTeamModal } from "@/components/admin/create-team-modal";
 import { PageHeader } from "@/components/page-header";
 import { useParams } from "next/navigation";
@@ -16,7 +16,23 @@ export default function TeamsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const params = useParams();
   const organizationId = params.organizationId as Id<"organizations">;
-  const teams = useQuery(api.teams.getOrganizationTeams, { organizationId });
+  const rawTeams = useQuery(api.teams.getOrganizationTeams, { organizationId });
+
+  // Transform the teams data to match the expected Team type
+  const teams = rawTeams?.map(team => ({
+    _id: team._id.toString(),
+    name: team.name,
+    description: team.description,
+    organizationId: team.organizationId || organizationId.toString(),
+    leaderId: team.leaderId || team.members.find(m => m.role === "leader")?.userId || team.members[0]?.userId || "",
+    members: team.members.map(member => ({
+      userId: member.userId,
+      role: member.role === "admin" ? "leader" : "member",
+      joinedAt: member.joinedAt,
+    })),
+    createdAt: team.createdAt || new Date().toISOString(),
+    updatedAt: team.updatedAt || new Date().toISOString(),
+  })) as Team[] | undefined;
 
   return (
     <div className="container mx-auto py-10">
@@ -42,7 +58,6 @@ export default function TeamsPage() {
       <CreateTeamModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        organizationId={organizationId}
       />
     </div>
   );

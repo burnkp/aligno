@@ -6,6 +6,14 @@ if (!process.env.RESEND_API_KEY) {
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+interface WelcomeEmailResponse {
+  success: boolean;
+  data?: {
+    id: string;
+  };
+  error?: Error;
+}
+
 export async function sendWelcomeEmail({
   email,
   orgName,
@@ -14,7 +22,7 @@ export async function sendWelcomeEmail({
   email: string;
   orgName: string;
   name: string;
-}) {
+}): Promise<WelcomeEmailResponse> {
   if (!process.env.NEXT_PUBLIC_APP_URL) {
     throw new Error('NEXT_PUBLIC_APP_URL is not defined in environment variables');
   }
@@ -26,7 +34,7 @@ export async function sendWelcomeEmail({
     signInUrl.searchParams.set('email', email.toLowerCase());
     signInUrl.searchParams.set('orgName', encodeURIComponent(orgName));
 
-    const data = await resend.emails.send({
+    const response = await resend.emails.send({
       from: 'Aligno <onboarding@resend.dev>',
       to: [email],
       subject: `Welcome to Aligno - Complete Your ${orgName} Setup`,
@@ -37,9 +45,13 @@ export async function sendWelcomeEmail({
       }),
     });
 
-    if (!data.id) {
-      throw new Error('Failed to send email');
+    // Handle potential errors in the response
+    if ('error' in response) {
+      throw new Error(response.error?.message || 'Failed to send email');
     }
+
+    // At this point, response is successful and has an id
+    const data = response as { id: string };
 
     console.log('Email sent successfully:', {
       emailId: data.id,
@@ -47,7 +59,7 @@ export async function sendWelcomeEmail({
       setupUrl: signInUrl.toString()
     });
 
-    return { success: true, data };
+    return { success: true, data: { id: data.id } };
   } catch (error) {
     console.error('Failed to send welcome email:', error);
     return { 

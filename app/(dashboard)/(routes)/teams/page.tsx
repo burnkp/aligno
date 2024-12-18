@@ -1,119 +1,81 @@
 "use client";
 
 import { useState } from "react";
+import { useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { TeamCard } from "@/components/teams/team-card";
-import { Team } from "@/types/teams";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
+import { Id } from "@/convex/_generated/dataModel";
 import { Plus } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { TeamCard } from "@/components/teams/team-card";
 import { CreateTeamModal } from "@/components/teams/create-team-modal";
+import { InviteMemberModal } from "@/components/teams/invite-member-modal";
+
+interface TeamMember {
+  userId: string;
+  email: string;
+  name: string;
+  role: "leader" | "member" | "admin";
+  joinedAt: string;
+}
+
+interface Team {
+  _id: Id<"teams">;
+  name: string;
+  description?: string;
+  organizationId: Id<"organizations">;
+  leaderId: string;
+  members: TeamMember[];
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function TeamsPage() {
-  const teamsData = useQuery(api.teams.listUserTeams);
+  const { user } = useUser();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedTeamId, setSelectedTeamId] = useState<Id<"teams"> | null>(null);
 
-  // Loading state
-  if (!teamsData) {
-    return (
-      <div className="container mx-auto py-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map((n) => (
-            <Skeleton key={n} className="h-48 rounded-lg" />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const teams = useQuery(api.teams.getTeams) as Team[] | undefined;
 
-  const memberTeams = teamsData.memberTeams || [];
-  const invitedTeams = (teamsData.invitedTeams || []).filter(Boolean) as Team[];
-  const hasTeams = memberTeams.length > 0 || invitedTeams.length > 0;
-
-  // No teams state
-  if (!hasTeams) {
-    return (
-      <div className="container mx-auto py-10">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Teams</h1>
-          <Button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-purple-600 hover:bg-purple-700"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Create Team
-          </Button>
-        </div>
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">No Teams Yet</h2>
-          <p className="text-gray-600">
-            Create a new team or accept an invitation to get started.
-          </p>
-        </div>
-        {showCreateModal && (
-          <CreateTeamModal
-            isOpen={showCreateModal}
-            onClose={() => setShowCreateModal(false)}
-          />
-        )}
-      </div>
-    );
+  if (!user || !teams) {
+    return <div>Loading...</div>;
   }
 
   return (
-    <div className="container mx-auto py-10 space-y-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Teams</h1>
-        <Button
-          onClick={() => setShowCreateModal(true)}
-          className="bg-purple-600 hover:bg-purple-700"
-        >
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold">Teams</h1>
+        <Button onClick={() => setShowCreateModal(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Create Team
         </Button>
       </div>
 
-      {memberTeams.length > 0 && (
-        <div>
-          <h2 className="text-2xl font-bold mb-4">Your Teams</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {memberTeams.map((team) => (
-              <TeamCard
-                key={team._id}
-                id={team._id}
-                name={team.name}
-                description={team.description}
-                members={team.members}
-                isMember={true}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {teams.map((team) => (
+          <TeamCard
+            key={team._id}
+            id={team._id}
+            name={team.name}
+            description={team.description}
+            members={team.members}
+            onInvite={() => setSelectedTeamId(team._id)}
+          />
+        ))}
+      </div>
 
-      {invitedTeams.length > 0 && (
-        <div>
-          <h2 className="text-2xl font-bold mb-4">Pending Invitations</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {invitedTeams.map((team) => (
-              <TeamCard
-                key={team._id}
-                id={team._id}
-                name={team.name}
-                description={team.description}
-                members={team.members}
-                isMember={false}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      <CreateTeamModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+      />
 
-      {showCreateModal && (
-        <CreateTeamModal
-          isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
+      {selectedTeamId && (
+        <InviteMemberModal
+          isOpen={!!selectedTeamId}
+          onClose={() => setSelectedTeamId(null)}
+          teamId={selectedTeamId}
         />
       )}
     </div>

@@ -75,6 +75,7 @@ export const createInvitation = mutation({
       status: "pending",
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       createdAt: now,
+      updatedAt: now,
       createdBy: identity.subject,
     });
 
@@ -142,8 +143,36 @@ export const accept = mutation({
       status: "accepted",
       acceptedAt: now,
       acceptedBy: args.userId,
+      updatedAt: now,
     });
 
     return { success: true };
+  },
+});
+
+// Mark email as bounced
+export const markEmailBounced = mutation({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    // Find all pending invitations for this email
+    const invitations = await ctx.db
+      .query("invitations")
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("email"), args.email),
+          q.eq(q.field("status"), "pending")
+        )
+      )
+      .collect();
+
+    // Update all pending invitations to bounced status
+    for (const invitation of invitations) {
+      await ctx.db.patch(invitation._id, {
+        status: "bounced",
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    return { success: true, updatedCount: invitations.length };
   },
 }); 

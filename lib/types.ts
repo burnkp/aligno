@@ -1,29 +1,5 @@
 import { Id } from "@/convex/_generated/dataModel";
 
-export interface Template {
-  _id: Id<"templates">;
-  name: string;
-  description: string;
-  type: "objective" | "okr" | "kpi";
-  fields: TemplateField[];
-  defaultValues?: {
-    startDate?: string;
-    endDate?: string;
-    target?: number;
-    unit?: string;
-  };
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface TemplateField {
-  name: string;
-  type: "text" | "number" | "date" | "select";
-  required: boolean;
-  options?: string[];
-}
-
 export interface Milestone {
   _id: string;
   name: string;

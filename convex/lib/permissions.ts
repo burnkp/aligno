@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { DatabaseReader, DatabaseWriter } from "../_generated/server";
+import { DatabaseReader, DatabaseWriter, QueryCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
 
 export type UserRole = "super_admin" | "org_admin" | "team_leader" | "team_member";
@@ -139,4 +139,66 @@ export async function isOrgAdmin(
     .first();
 
   return user?.role === "org_admin" && user?.organizationId === organizationId;
+}
+
+/**
+ * Get all team IDs that a user has access to
+ * @param ctx - The Convex query context
+ * @param userId - The user's ID (from Clerk)
+ * @returns Array of team IDs the user has access to
+ */
+export async function getAllowedTeamIds(
+  ctx: QueryCtx,
+  userId: string
+): Promise<string[]> {
+  // Get user's record to check role
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_clerk_id", (q) => q.eq("userId", userId))
+    .first();
+
+  if (!user) {
+    return [];
+  }
+
+  // Super admins can access all teams
+  if (user.role === "super_admin") {
+    const allTeams = await ctx.db.query("teams").collect();
+    return allTeams.map((team) => team._id);
+  }
+
+  // Get all teams first
+  const allTeams = await ctx.db.query("teams").collect();
+
+  // Filter teams where user is a member
+  const teams = allTeams.filter(team => 
+    team.members.some(member => member.userId === userId)
+  );
+
+  // If user is org_admin, also get all teams in their organization
+  if (user.role === "org_admin" && user.organizationId !== "SYSTEM") {
+    // Type guard to ensure organizationId is a valid Id<"organizations">
+    const isValidOrgId = (id: string | Id<"organizations">): id is Id<"organizations"> => 
+      id !== "SYSTEM";
+
+    if (isValidOrgId(user.organizationId)) {
+      // Store the valid organization ID to maintain type safety
+      const orgId = user.organizationId;
+      const orgTeams = await ctx.db
+        .query("teams")
+        .withIndex("by_organization", (q) => 
+          q.eq("organizationId", orgId)
+        )
+        .collect();
+      
+      // Create a Set from team IDs and convert back to array
+      const teamIds = teams.map((team) => team._id);
+      const orgTeamIds = orgTeams.map((team) => team._id);
+      const uniqueTeamIds = Array.from(new Set([...teamIds, ...orgTeamIds]));
+      
+      return uniqueTeamIds;
+    }
+  }
+
+  return teams.map((team) => team._id);
 } 
