@@ -1,30 +1,21 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    runtime: 'nodejs',
     turbotrace: {
       contextDirectory: __dirname,
     },
   },
-  // Specify which paths should use Edge Runtime
-  async headers() {
-    return [
-      {
-        source: '/api/:path*',
-        headers: [
-          {
-            key: 'x-edge-runtime',
-            value: '1',
-          },
-        ],
-      },
-    ];
-  },
-  // Disable telemetry
-  telemetry: {
-    enabled: false,
-  },
-  // Add build cache configuration
+  headers: async () => ([
+    {
+      source: '/api/:path*',
+      headers: [
+        {
+          key: 'Cache-Control',
+          value: 'no-store',
+        },
+      ],
+    },
+  ]),
   output: 'standalone',
   poweredByHeader: false,
   reactStrictMode: true,
@@ -34,6 +25,11 @@ const nextConfig = {
   },
   images: { 
     unoptimized: true 
+  },
+  // Configure build cache
+  distDir: '.next',
+  generateBuildId: async () => {
+    return 'build-' + Date.now();
   },
 };
 

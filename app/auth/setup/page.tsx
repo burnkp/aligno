@@ -1,92 +1,62 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { SignInButton } from "@clerk/nextjs";
 import { Loader2 } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
-import logger from "@/utils/logger";
 
-export default function AuthSetupPage() {
+function SetupContent() {
   const searchParams = useSearchParams();
-  const { user, isLoaded } = useUser();
-  const { toast } = useToast();
-  const updateUserClerkId = useMutation(api.mutations.organizations.updateUserClerkId);
-
-  useEffect(() => {
-    const setupUser = async () => {
-      if (!isLoaded || !user) return;
-
-      try {
-        const email = searchParams.get("email");
-        const orgName = searchParams.get("orgName");
-
-        if (!email || !orgName) {
-          logger.error("Missing email or organization name");
-          toast({
-            title: "Error",
-            description: "Missing required information. Please try again.",
-            variant: "destructive",
-          });
-          window.location.replace("/");
-          return;
-        }
-
-        // Verify email matches
-        if (user.primaryEmailAddress?.emailAddress.toLowerCase() !== email.toLowerCase()) {
-          toast({
-            title: "Error",
-            description: "Please sign in with the email address where you received the invitation.",
-            variant: "destructive",
-          });
-          window.location.replace("/sign-in");
-          return;
-        }
-
-        logger.info('Setting up user:', {
-          email: email.toLowerCase(),
-          clerkId: user.id,
-          orgName: decodeURIComponent(orgName)
-        });
-
-        // Update user's Clerk ID in Convex
-        await updateUserClerkId({
-          email: email.toLowerCase(),
-          clerkId: user.id,
-          orgName: decodeURIComponent(orgName)
-        });
-
-        // Show success message
-        toast({
-          title: "Success",
-          description: "Your account has been set up successfully.",
-        });
-
-        // Force a hard redirect to dashboard
-        window.location.replace("/dashboard");
-      } catch (error) {
-        logger.error("Error during setup:", error);
-        toast({
-          title: "Error",
-          description: "Failed to set up your account. Please try again.",
-          variant: "destructive",
-        });
-        window.location.replace("/");
-      }
-    };
-
-    setupUser();
-  }, [isLoaded, user, searchParams, updateUserClerkId, toast]);
+  const email = searchParams.get("email");
+  const orgName = searchParams.get("orgName");
 
   return (
     <div className="h-screen w-full flex items-center justify-center bg-muted/50">
-      <div className="text-center space-y-4">
-        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-        <p className="text-muted-foreground">Setting up your account...</p>
-        <p className="text-sm text-muted-foreground">Please wait while we configure your organization.</p>
-      </div>
+      <Card className="w-[90%] max-w-md">
+        <CardHeader>
+          <CardTitle>Complete Your Setup</CardTitle>
+          <CardDescription>
+            You're almost there! Please complete your account setup to continue.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Organization: <span className="font-medium text-foreground">{orgName}</span>
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Email: <span className="font-medium text-foreground">{email}</span>
+            </p>
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm">
+              Click below to set up your account and access your organization's dashboard.
+            </p>
+          </div>
+          <SignInButton mode="modal">
+            <Button className="w-full">
+              Complete Setup
+            </Button>
+          </SignInButton>
+        </CardContent>
+      </Card>
     </div>
+  );
+}
+
+export default function SetupPage() {
+  return (
+    <Suspense fallback={
+      <div className="h-screen w-full flex items-center justify-center bg-muted/50">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SetupContent />
+    </Suspense>
   );
 } 

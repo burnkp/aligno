@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { sendWelcomeEmail } from "@/lib/email";
 import logger from "@/utils/logger";
 
+export const runtime = 'nodejs';
+
 export async function POST(request: Request) {
   try {
     // Log incoming request

@@ -78,9 +78,17 @@ async function testConvexConfiguration(): Promise<TestResult> {
       };
     }
 
-    // Validate Convex URL format
+    // Get and validate Convex URL
     const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
-    if (!convexUrl?.startsWith('https://')) {
+    if (!convexUrl) {
+      return {
+        success: false,
+        message: "NEXT_PUBLIC_CONVEX_URL is not defined",
+      };
+    }
+
+    // Validate Convex URL format
+    if (!convexUrl.startsWith('https://')) {
       return {
         success: false,
         message: "Invalid Convex URL format: URL should start with https://",
@@ -89,7 +97,7 @@ async function testConvexConfiguration(): Promise<TestResult> {
     }
 
     // Test Convex client initialization
-    const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL);
+    const convex = new ConvexReactClient(convexUrl);
     
     return {
       success: true,

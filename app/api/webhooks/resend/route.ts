@@ -17,6 +17,8 @@ interface ResendWebhookEvent {
   };
 }
 
+export const runtime = 'nodejs';
+
 export async function POST(request: Request) {
   const payload = await request.json() as ResendWebhookEvent;
   const signature = request.headers.get("resend-signature");

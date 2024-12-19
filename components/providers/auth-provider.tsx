@@ -41,6 +41,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           },
         },
       }}
+      isSatellite={false}
+      navigate={(to) => {
+        window.location.href = to;
+      }}
     >
       {children}
     </ClerkProvider>
