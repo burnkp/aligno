@@ -1,10 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    turbotrace: {
-      contextDirectory: __dirname,
-    },
-  },
   headers: async () => ([
     {
       source: '/api/:path*',
