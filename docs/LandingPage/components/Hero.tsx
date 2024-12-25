@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, PlayCircle } from "lucide-react";
+import Image from "next/image";
 
 export const Hero = () => {
   return (
@@ -60,11 +61,35 @@ export const Hero = () => {
         {/* Social proof */}
         <div className="max-w-6xl mx-auto">
           <p className="text-center text-sm text-gray-500 mb-8">Trusted by leading companies worldwide</p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 items-center justify-items-center opacity-50">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon" className="h-8" />
-            <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" alt="Google" className="h-8" />
-            <img src="https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg" alt="Netflix" className="h-8" />
-            <img src="https://upload.wikimedia.org/wikipedia/commons/5/51/IBM_logo.svg" alt="IBM" className="h-8" />
+          <div className="flex justify-center gap-8 mt-8">
+            <Image
+              src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg"
+              alt="Amazon"
+              width={100}
+              height={32}
+              className="h-8 w-auto"
+            />
+            <Image
+              src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg"
+              alt="Google"
+              width={100}
+              height={32}
+              className="h-8 w-auto"
+            />
+            <Image
+              src="https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg"
+              alt="Netflix"
+              width={100}
+              height={32}
+              className="h-8 w-auto"
+            />
+            <Image
+              src="https://upload.wikimedia.org/wikipedia/commons/5/51/IBM_logo.svg"
+              alt="IBM"
+              width={100}
+              height={32}
+              className="h-8 w-auto"
+            />
           </div>
         </div>
       </div>

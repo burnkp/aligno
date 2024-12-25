@@ -57,7 +57,7 @@ export function ConvexClientProvider({ children }: ConvexClientProviderProps) {
     return () => {
       logger.info("ConvexClientProvider: Component unmounting");
     };
-  }, []);
+  }, [validateEnvironmentVariables]);
 
   return (
     <ConvexProviderWithClerk

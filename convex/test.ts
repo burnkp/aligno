@@ -64,9 +64,8 @@ export const checkEmailStatus = query({
       .query("emailLogs")
       .filter(q => q.eq(q.field("email"), email))
       .order("desc")
-      .take(1)
-      .collect();
+      .first();
 
-    return logs[0] || null;
+    return logs || null;
   },
 }); 

@@ -55,7 +55,14 @@ Object.defineProperty(window, 'IntersectionObserver', {
 });
 
 // Mock scrollTo
-window.scrollTo = vi.fn();
+window.scrollTo = vi.fn((x?: number | ScrollToOptions, y?: number) => {
+  if (typeof x === 'object') {
+    // Handle ScrollToOptions
+    return;
+  }
+  // Handle x, y coordinates
+  return;
+});
 
 // Mock ResizeObserver
 class ResizeObserver {

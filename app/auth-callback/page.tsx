@@ -18,7 +18,7 @@ export default function AuthCallback() {
   const ensureSuperAdmin = useMutation(api.users.ensureSuperAdmin);
 
   useEffect(() => {
-    const handleRedirect = async () => {
+    async function handleRedirect() {
       logger.info("Auth Callback State: " + JSON.stringify({
         isSignedIn,
         isUserLoaded,
@@ -66,13 +66,12 @@ export default function AuthCallback() {
           router.push("/");
         }
       } catch (error) {
-        logger.error("Error in auth callback: " + error);
+        logger.error("Error in auth callback:", error);
         router.push("/");
       }
-    };
-
+    }
     handleRedirect();
-  }, [isSignedIn, isUserLoaded, clerkUser, user, userId, router, ensureSuperAdmin]);
+  }, [router]);
 
   return (
     <div className="h-screen w-screen flex items-center justify-center">
