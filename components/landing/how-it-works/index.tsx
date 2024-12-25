@@ -7,7 +7,7 @@ const steps = [
   {
     number: "01",
     title: "Set Strategic Goals",
-    description: "Define your organization's objectives and key results with our strategic planning framework.",
+    description: "Define your organization&apos;s objectives and key results with our strategic planning framework.",
     icon: Target,
     delay: 0.1,
   },
@@ -41,7 +41,7 @@ export const HowItWorks = () => {
             </span>
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto animate-fade-up" style={{ animationDelay: "0.1s" }}>
-            Transform your organization's performance in three simple steps
+            Transform your organization&apos;s performance in three simple steps
           </p>
         </div>
 

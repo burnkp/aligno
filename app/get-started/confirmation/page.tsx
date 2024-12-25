@@ -32,10 +32,10 @@ function ConfirmationContent() {
           </div>
           <div className="space-y-2">
             <p className="text-sm">
-              Please check your email for instructions on how to access your organization's dashboard.
+              Please check your email for instructions on how to access your organization&apos;s dashboard.
             </p>
             <p className="text-sm">
-              If you haven't received the email, please check your spam folder.
+              If you haven&apos;t received the email, please check your spam folder.
             </p>
           </div>
           <SignInButton mode="modal">

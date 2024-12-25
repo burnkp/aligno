@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSignIn, useUser } from "@clerk/nextjs";
 import { useQuery, useMutation } from "convex/react";
@@ -24,20 +24,7 @@ export default function InvitationPage({ params }: { params: { token: string } }
 
   const acceptInvitation = useMutation(api.teams.acceptInvitation);
 
-  // Handle authentication and auto-accept
-  useEffect(() => {
-    if (isLoaded) {
-      if (!isSignedIn) {
-        // Store invitation token
-        sessionStorage.setItem('pendingInvitationToken', params.token);
-      } else if (user) {
-        // Auto-accept invitation after authentication
-        handleAcceptInvitation();
-      }
-    }
-  }, [isLoaded, isSignedIn, user, params.token]);
-
-  const handleSignIn = () => {
+  const handleSignIn = useCallback(() => {
     try {
       // Implement rate limiting (1 attempt per 5 seconds)
       const now = Date.now();
@@ -65,9 +52,9 @@ export default function InvitationPage({ params }: { params: { token: string } }
         variant: "destructive",
       });
     }
-  };
+  }, [lastAttempt, params.token, toast]);
 
-  const handleAcceptInvitation = async () => {
+  const handleAcceptInvitation = useCallback(async () => {
     if (!isSignedIn || !user) {
       toast({
         title: "Authentication Required",
@@ -98,7 +85,7 @@ export default function InvitationPage({ params }: { params: { token: string } }
       if (result.success) {
         toast({
           title: "Welcome!",
-          description: "You've successfully joined the team.",
+          description: "You&apos;ve successfully joined the team.",
         });
         
         // Clear any stored invitation token
@@ -117,16 +104,31 @@ export default function InvitationPage({ params }: { params: { token: string } }
     } finally {
       setIsAccepting(false);
     }
-  };
+  }, [isSignedIn, user, invitation, acceptInvitation, params.token, router, toast]);
+
+  // Handle authentication and auto-accept
+  useEffect(() => {
+    if (isLoaded) {
+      if (!isSignedIn) {
+        // Store invitation token
+        sessionStorage.setItem('pendingInvitationToken', params.token);
+      } else if (user) {
+        // Auto-accept invitation after authentication
+        handleAcceptInvitation();
+      }
+    }
+  }, [isLoaded, isSignedIn, user, params.token, handleAcceptInvitation]);
 
   // Show loading state while checking authentication or processing
   if (!isLoaded || !invitation || isAccepting) {
-    return <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold mb-2">Please wait</h2>
-        <p className="text-gray-600">Setting up your account...</p>
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-2">Please wait</h2>
+          <p className="text-gray-600">Setting up your account...</p>
+        </div>
       </div>
-    </div>;
+    );
   }
 
   // Handle invalid invitation states
@@ -185,7 +187,7 @@ export default function InvitationPage({ params }: { params: { token: string } }
         <div className="text-center">
           <h2 className="text-2xl font-bold">Join Team</h2>
           <p className="mt-2 text-gray-600">
-            You've been invited to join as a {invitation.role}
+            You&apos;ve been invited to join as a {invitation.role}
           </p>
         </div>
 

@@ -18,7 +18,7 @@ function SetupContent() {
         <CardHeader>
           <CardTitle>Complete Your Setup</CardTitle>
           <CardDescription>
-            You're almost there! Please complete your account setup to continue.
+            You&apos;re almost there! Please complete your account setup to continue.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -32,7 +32,7 @@ function SetupContent() {
           </div>
           <div className="space-y-2">
             <p className="text-sm">
-              Click below to set up your account and access your organization's dashboard.
+              Click below to set up your account and access your organization&apos;s dashboard.
             </p>
           </div>
           <SignInButton mode="modal">

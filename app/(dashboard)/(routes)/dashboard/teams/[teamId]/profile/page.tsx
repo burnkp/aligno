@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -7,51 +8,69 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getUserRole } from "@/utils/permissions";
 import { Id } from "@/convex/_generated/dataModel";
 import { Team } from "@/types/teams";
-import { currentUser } from "@clerk/nextjs";
-import { redirect, notFound } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getTeamData } from "@/lib/actions/teams";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Loader2 } from "lucide-react";
+import logger from "@/utils/logger";
 
 interface Props {
   params: {
-    teamId: string;
+    teamId: Id<"teams">;
   };
 }
 
 interface TeamWithData extends Team {
   objectives: Array<{
-    _id: Id<any>;
+    _id: Id<"strategicObjectives">;
     title: string;
     description: string;
     progress: number;
     startDate: string;
     endDate: string;
+    status: string;
   }>;
   kpis: Array<{
-    _id: Id<any>;
+    _id: Id<"kpis">;
     title: string;
     description: string;
-    target: number;
-    current: number;
+    targetValue: number;
+    currentValue: number;
+    progress: number;
+    status: string;
   }>;
 }
 
-export default async function TeamProfilePage({ params }: Props) {
-  const user = await currentUser();
-  if (!user) {
-    redirect("/sign-in");
+export default function TeamProfilePage({ params }: Props) {
+  const { user, isLoaded } = useUser();
+  const router = useRouter();
+  const teamData = useQuery(api.teams.getTeamWithData, { teamId: params.teamId });
+
+  useEffect(() => {
+    if (isLoaded && !user) {
+      logger.info("User not authenticated, redirecting to sign-in");
+      router.push("/sign-in");
+    }
+  }, [isLoaded, user, router]);
+
+  if (!isLoaded || !teamData) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
-  const teamData = await getTeamData(params.teamId);
   if (!teamData) {
-    notFound();
+    logger.warn("Team data not found, redirecting to 404");
+    router.push("/404");
+    return null;
   }
 
-  const { objectives, kpis, ...team } = teamData;
-  const userRole = getUserRole(user.id, teamData);
+  const { objectives, kpis, ...team } = teamData as TeamWithData;
+  const userRole = getUserRole(user?.id || "", team);
 
   return (
     <div className="container mx-auto py-10 space-y-8">

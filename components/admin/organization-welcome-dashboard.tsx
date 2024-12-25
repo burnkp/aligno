@@ -50,7 +50,7 @@ export function OrganizationWelcomeDashboard({
     {
       id: "settings",
       title: "Configure Organization Settings",
-      description: "Customize your organization's preferences",
+      description: "Customize your organization&apos;s preferences",
       href: `/admin/organizations/${organizationId}/settings`,
       icon: Settings,
       isComplete: false, // TODO: Check if settings are configured
@@ -78,7 +78,7 @@ export function OrganizationWelcomeDashboard({
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground mb-4">
-            Let's get you started with setting up your organization. Follow these
+            Let&apos;s get you started with setting up your organization. Follow these
             steps to get the most out of Aligno.
           </p>
           <div className="flex items-center gap-4 mb-8">

@@ -22,7 +22,7 @@ export default function GetStartedPage() {
         <div className="flex flex-col items-center justify-center">
           <h1 className="text-4xl font-bold mb-4">Get Started with Aligno</h1>
           <p className="text-muted-foreground text-center max-w-2xl mb-8">
-            Let's set up your organization and get you started with Aligno. Follow
+            Let&apos;s set up your organization and get you started with Aligno. Follow
             our simple setup process to configure your workspace.
           </p>
 

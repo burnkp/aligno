@@ -72,7 +72,7 @@ export const Pricing = () => {
       
       {/* Background Pattern */}
       <div 
-        className="absolute inset-0 bg-[url('/grid.svg')] bg-center opacity-10"
+        className="absolute inset-0 grid-background bg-center opacity-10"
         style={{
           maskImage: 'linear-gradient(to bottom, white, transparent)',
           WebkitMaskImage: 'linear-gradient(to bottom, white, transparent)',
@@ -89,7 +89,7 @@ export const Pricing = () => {
             Simple, Transparent Pricing
           </h2>
           <p className="text-lg text-brand-purple-100 max-w-2xl mx-auto animate-fade-up" style={{ animationDelay: "0.1s" }}>
-            Choose the perfect plan for your team's needs
+            Choose the perfect plan for your team&apos;s needs
           </p>
         </div>
 
