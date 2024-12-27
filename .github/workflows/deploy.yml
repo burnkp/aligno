@@ -21,15 +21,25 @@ jobs:
         with:
           node-version: '18.20.5'  # Match Node.js version with your local environment
 
-      # Step 3: Install Dependencies
+      # Step 3: Export Environment Variables
+      - name: Export Environment Variables
+        run: |
+          echo "CONVEX_DEPLOYMENT=${{ secrets.CONVEX_DEPLOYMENT }}" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_CONVEX_URL=${{ secrets.NEXT_PUBLIC_CONVEX_URL }}" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}" >> $GITHUB_ENV
+          echo "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}" >> $GITHUB_ENV
+          echo "CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}" >> $GITHUB_ENV
+          echo "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}" >> $GITHUB_ENV
+
+      # Step 4: Install Dependencies
       - name: Install dependencies
         run: npm install
 
-      # Step 4: Build Project
+      # Step 5: Build Project
       - name: Build project
         run: npm run build  # Make sure this matches your build command (e.g., `next build`)
 
-      # Step 5: Deploy to Server via SSH
+      # Step 6: Deploy to Server via SSH
       - name: Deploy to Server
         uses: appleboy/scp-action@v0.1.4
         with:
@@ -39,7 +49,7 @@ jobs:
           source: ".,!node_modules"  # Transfer all files except node_modules
           target: "/var/www/alignometrix"  # Replace with your server project path
 
-      # Step 6: Restart the Application (Optional)
+      # Step 7: Restart the Application on Server
       - name: Restart Application on Server
         uses: appleboy/ssh-action@v1.0.0
         with:
