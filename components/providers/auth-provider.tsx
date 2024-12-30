@@ -2,6 +2,7 @@
 
 import { ClerkProvider } from "@clerk/nextjs";
 import { ReactNode, useEffect } from "react";
+import { LoadingState } from "@/components/ui/loading-state";
 import logger from "@/utils/logger";
 
 interface AuthProviderProps {
@@ -39,6 +40,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             },
             animation: "fade-in 0.5s ease-out",
           },
+          card: {
+            boxShadow: "none",
+            backgroundColor: "transparent",
+          },
+          loadingScreen: {
+            backdropFilter: "blur(8px)",
+            backgroundColor: "rgba(255, 255, 255, 0.9)",
+          }
         },
       }}
       isSatellite={false}

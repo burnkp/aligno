@@ -1,6 +1,9 @@
 import { authMiddleware } from "@clerk/nextjs";
 import { NextResponse } from "next/server";
 
+// Explicitly set runtime to nodejs
+export const runtime = "nodejs";
+
 export default authMiddleware({
   publicRoutes: [
     "/",
@@ -48,6 +51,11 @@ export default authMiddleware({
   }
 });
 
+// Update matcher configuration to be more specific
 export const config = {
-  matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/", "/(api|trpc)(.*)"],
+  matcher: [
+    // Match all paths except static files and api routes that don't need auth
+    "/((?!.+\\.[\\w]+$|_next|api/send-welcome-email).*)",
+    // Include specific API routes that need auth
+    "/api/(.*)"],
 };
