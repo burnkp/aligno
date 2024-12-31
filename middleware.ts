@@ -12,6 +12,8 @@ export default authMiddleware({
     "/api/send-welcome-email",
     "/sign-in",
     "/sign-up",
+    "/privacy-policy",
+    "/terms"
   ],
   afterAuth(auth, req) {
     const url = new URL(req.url);
