@@ -4,6 +4,7 @@ import { Features } from "@/components/landing/features";
 import { Comparison } from "@/components/landing/comparison";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { Pricing } from "@/components/landing/pricing";
+import { Footer } from "@/components/landing/footer";
 
 export default function LandingPage() {
   return (
@@ -14,6 +15,7 @@ export default function LandingPage() {
       <Comparison />
       <HowItWorks />
       <Pricing />
+      <Footer />
     </main>
   );
 }
