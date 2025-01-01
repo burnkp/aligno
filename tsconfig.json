@@ -21,7 +21,8 @@
     "paths": {
       "@/*": ["./*"],
       "@convex/*": ["./convex/*"],
-      "@utils/*": ["./*"]
+      "@utils/*": ["./*"],
+      "@generated/*": ["./convex/_generated/*"] // Added this line
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

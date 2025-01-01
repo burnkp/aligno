@@ -27,6 +27,7 @@ import type * as migrations from "../migrations.js";
 import type * as mutations_organizations from "../mutations/organizations.js";
 import type * as operationalKeyResults from "../operationalKeyResults.js";
 import type * as organizations from "../organizations.js";
+import type * as queries_debugJWT from "../queries/debugJWT.js";
 import type * as queries_organizations from "../queries/organizations.js";
 import type * as strategicObjectives from "../strategicObjectives.js";
 import type * as teams from "../teams.js";
@@ -57,6 +58,7 @@ declare const fullApi: ApiFromModules<{
   "mutations/organizations": typeof mutations_organizations;
   operationalKeyResults: typeof operationalKeyResults;
   organizations: typeof organizations;
+  "queries/debugJWT": typeof queries_debugJWT;
   "queries/organizations": typeof queries_organizations;
   strategicObjectives: typeof strategicObjectives;
   teams: typeof teams;
