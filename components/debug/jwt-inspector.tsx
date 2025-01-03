@@ -3,7 +3,7 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LoadingState } from "@/components/ui/loading-state";
@@ -36,8 +36,12 @@ export default function JWTInspector() {
   const { isLoaded: isUserLoaded, isSignedIn, user } = useUser();
   const [isExpanded, setIsExpanded] = useState<Record<string, boolean>>({});
 
-  // Only make the query if the user is signed in
-  const claimsQuery = isSignedIn ? useQuery(api.debug.inspectJWTClaims) : undefined;
+  // Always call useQuery, but return undefined if not signed in
+  const claimsQuery = useQuery(api.debug.inspectJWTClaims);
+  const processedQuery = useMemo(() => {
+    if (!isSignedIn) return undefined;
+    return claimsQuery;
+  }, [isSignedIn, claimsQuery]);
 
   if (!isUserLoaded) {
     return <LoadingState />;
@@ -87,20 +91,20 @@ export default function JWTInspector() {
     </div>
   );
 
-  if (claimsQuery === undefined) {
+  if (processedQuery === undefined) {
     return <LoadingState />;
   }
 
-  if (claimsQuery.status === "error" || !claimsQuery.claims) {
+  if (processedQuery.status === "error" || !processedQuery.claims) {
     return (
       <Card className="p-6 border-red-200 bg-red-50">
         <h2 className="text-xl font-semibold text-red-700 mb-4">Error Inspecting JWT</h2>
-        <p className="text-red-600">{claimsQuery.message}</p>
+        <p className="text-red-600">{processedQuery.message}</p>
       </Card>
     );
   }
 
-  const jwtClaims = claimsQuery.claims as JWTClaims;
+  const jwtClaims = processedQuery.claims as JWTClaims;
 
   const sections = [
     {
