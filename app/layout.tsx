@@ -7,6 +7,7 @@ import { AuthLoading } from "@/components/providers/auth-loading";
 import { Suspense } from "react";
 import { LoadingState } from "@/components/ui/loading-state";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/react";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,6 +25,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <SpeedInsights />
+        <Analytics />
         <AuthProvider>
           <Suspense fallback={<LoadingState fullScreen />}>
             <AuthLoading>
