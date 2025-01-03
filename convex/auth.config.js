@@ -1,3 +1,5 @@
+import { v } from "convex/values";
+
 export default {
   providers: [
     {
@@ -5,7 +7,8 @@ export default {
       applicationID: "convex",
 
       validateToken: async (token) => {
-        console.log("Raw token:", JSON.stringify(token, null, 2));
+        // Log the incoming token
+        console.log("[AUTH_DEBUG] Incoming token:", JSON.stringify(token, null, 2));
         
         if (!token || !token.sub || !token.email) {
           throw new Error("Invalid token: missing required claims");
@@ -25,18 +28,22 @@ export default {
           type: "clerk",
           // Ensure token identifier is properly formatted
           tokenIdentifier: `https://clerk.alignometrix.com|${token.sub}`,
-          // Store original token data
+          // Store original token data in customClaims
           customClaims: {
-            ...token,
-            // Remove duplicated fields
-            sub: undefined,
-            email: undefined,
-            role: undefined,
-            org_id: undefined
+            emailVerified: token.emailVerified,
+            familyName: token.familyName,
+            givenName: token.givenName,
+            issuer: token.issuer,
+            name: token.name,
+            phoneNumberVerified: token.phoneNumberVerified,
+            pictureUrl: token.pictureUrl,
+            updatedAt: token.updatedAt
           }
         };
 
-        console.log("Standardized token:", JSON.stringify(standardizedToken, null, 2));
+        // Log the standardized token
+        console.log("[AUTH_DEBUG] Standardized token:", JSON.stringify(standardizedToken, null, 2));
+        
         return standardizedToken;
       },
 

@@ -1,5 +1,4 @@
 import { query } from "./_generated/server";
-import logger from "./lib/logger";
 
 /**
  * Debug endpoint to inspect JWT claims from Clerk
@@ -12,7 +11,7 @@ export const inspectJWTClaims = query({
       const identity = await ctx.auth.getUserIdentity();
       
       if (!identity) {
-        logger.warn("inspectJWTClaims: No valid JWT found or user not authenticated");
+        console.warn("[DEBUG] No valid JWT found or user not authenticated");
         return {
           status: "error",
           message: "No valid JWT found or user not authenticated",
@@ -21,7 +20,13 @@ export const inspectJWTClaims = query({
       }
 
       // Log the raw identity for debugging
-      logger.debug("Raw identity:", JSON.stringify(identity, null, 2));
+      console.log("[DEBUG] Raw identity from Convex:", JSON.stringify({
+        identity,
+        type: identity.type,
+        role: identity.role,
+        orgId: identity.orgId,
+        customClaims: identity.customClaims
+      }, null, 2));
 
       // Extract all claims from the token
       const claims = {
@@ -53,14 +58,15 @@ export const inspectJWTClaims = query({
         }
       };
 
-      logger.info("JWT claims extracted:", {
+      console.log("[DEBUG] JWT claims extracted:", JSON.stringify({
         subject: claims.subject,
         email: claims.email,
         role: claims.role,
         orgId: claims.orgId,
         authType: claims.authType,
-        authProvider: claims.authProvider
-      });
+        authProvider: claims.authProvider,
+        customClaimsKeys: Object.keys(claims.customClaims || {})
+      }, null, 2));
 
       return {
         status: "success",
@@ -68,11 +74,11 @@ export const inspectJWTClaims = query({
         claims
       };
     } catch (error) {
-      logger.error("Error extracting JWT claims:", { 
+      console.error("[DEBUG] Error extracting JWT claims:", JSON.stringify({ 
         error,
         errorMessage: error instanceof Error ? error.message : "Unknown error",
         errorStack: error instanceof Error ? error.stack : undefined
-      });
+      }, null, 2));
 
       return {
         status: "error",
