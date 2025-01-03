@@ -1,11 +1,24 @@
 export default {
   providers: [
     {
-      domain: "gorgeous-sheepdog-90.clerk.accounts.dev",
+      domain: "https://alignometrix.clerk.accounts.dev",
       applicationID: "convex",
+
+      validateToken: async (token) => {
+        if (!token || !token.sub || !token.email) {
+          throw new Error("Invalid token: missing required claims");
+        }
+        return token;
+      },
+
       roleFromToken: (token) => {
-        console.log("Extracted role:", token.role); // Debugging log
-        return token.role || "default_role"; // Fallback role
+        if (token.role) {
+          return token.role;
+        }
+        if (token.email === "kushtrim@promnestria.biz") {
+          return "super_admin";
+        }
+        return "user";
       },
     },
   ],

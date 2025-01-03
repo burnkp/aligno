@@ -20,6 +20,9 @@ export const inspectJWTClaims = query({
         };
       }
 
+      // Log the raw token for debugging
+      logger.debug("Raw identity object:", identity);
+
       // Extract all claims from the token
       const claims = {
         // Basic claims
@@ -35,11 +38,15 @@ export const inspectJWTClaims = query({
         customClaims: identity.customClaims || {},
         
         // Auth metadata
-        authType: identity.type,
-        authProvider: identity.tokenIdentifier.split(":")[0],
+        authType: identity.type || "unknown",
+        authProvider: identity.tokenIdentifier?.split(":")[0] || "unknown",
         
         // Debug info
-        rawToken: identity
+        rawToken: {
+          ...identity,
+          // Remove potentially sensitive data
+          tokenIdentifier: identity.tokenIdentifier?.split(":")[0] + ":***",
+        }
       };
 
       logger.info("inspectJWTClaims: Successfully extracted claims", {
@@ -56,11 +63,17 @@ export const inspectJWTClaims = query({
         claims
       };
     } catch (error) {
-      logger.error("inspectJWTClaims: Error extracting JWT claims", { error });
+      logger.error("inspectJWTClaims: Error extracting JWT claims", { 
+        error,
+        errorMessage: error instanceof Error ? error.message : "Unknown error",
+        errorStack: error instanceof Error ? error.stack : undefined
+      });
+
       return {
         status: "error",
-        message: "Failed to extract JWT claims",
-        error: error instanceof Error ? error.message : "Unknown error",
+        message: error instanceof Error 
+          ? `Failed to extract JWT claims: ${error.message}`
+          : "Failed to extract JWT claims: Unknown error",
         claims: null
       };
     }

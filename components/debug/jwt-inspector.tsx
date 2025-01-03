@@ -3,7 +3,7 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { LoadingState } from "@/components/ui/loading-state";
@@ -35,9 +35,22 @@ interface QueryResult {
 export default function JWTInspector() {
   const { isLoaded: isUserLoaded, isSignedIn, user } = useUser();
   const [isExpanded, setIsExpanded] = useState<Record<string, boolean>>({});
+  const [error, setError] = useState<string | null>(null);
 
   // Always call useQuery, but return undefined if not signed in
   const claimsQuery = useQuery(api.debug.inspectJWTClaims);
+
+  // Add error logging
+  useEffect(() => {
+    if (claimsQuery?.status === "error") {
+      console.error("JWT Claims Query Error:", {
+        status: claimsQuery.status,
+        message: claimsQuery.message
+      });
+      setError(claimsQuery.message);
+    }
+  }, [claimsQuery]);
+
   const processedQuery = useMemo(() => {
     if (!isSignedIn) return undefined;
     return claimsQuery;
@@ -54,6 +67,27 @@ export default function JWTInspector() {
         <p className="text-gray-600">Please sign in to inspect JWT claims.</p>
       </Card>
     );
+  }
+
+  if (error) {
+    return (
+      <Card className="p-6 border-red-200 bg-red-50">
+        <h2 className="text-xl font-semibold text-red-700 mb-4">Error Inspecting JWT</h2>
+        <p className="text-red-600 mb-4">{error}</p>
+        <div className="text-sm text-gray-600">
+          <p className="mb-2">Debugging information:</p>
+          <ul className="list-disc pl-5">
+            <li>User ID: {user.id}</li>
+            <li>Email: {user.emailAddresses[0]?.emailAddress}</li>
+            <li>Auth Status: {isSignedIn ? "Signed In" : "Not Signed In"}</li>
+          </ul>
+        </div>
+      </Card>
+    );
+  }
+
+  if (processedQuery === undefined) {
+    return <LoadingState />;
   }
 
   const toggleSection = (section: string) => {
@@ -90,19 +124,6 @@ export default function JWTInspector() {
       )}
     </div>
   );
-
-  if (processedQuery === undefined) {
-    return <LoadingState />;
-  }
-
-  if (processedQuery.status === "error" || !processedQuery.claims) {
-    return (
-      <Card className="p-6 border-red-200 bg-red-50">
-        <h2 className="text-xl font-semibold text-red-700 mb-4">Error Inspecting JWT</h2>
-        <p className="text-red-600">{processedQuery.message}</p>
-      </Card>
-    );
-  }
 
   const jwtClaims = processedQuery.claims as JWTClaims;
 
