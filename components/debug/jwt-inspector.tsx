@@ -33,16 +33,17 @@ interface QueryResult {
 }
 
 export default function JWTInspector() {
-  const { isLoaded: isUserLoaded, isSignedIn } = useUser();
-  // @ts-ignore - Ignoring type inference issues
-  const claimsQuery = useQuery(api.debug.inspectJWTClaims) as QueryResult | undefined;
+  const { isLoaded: isUserLoaded, isSignedIn, user } = useUser();
   const [isExpanded, setIsExpanded] = useState<Record<string, boolean>>({});
+
+  // Only make the query if the user is signed in
+  const claimsQuery = isSignedIn ? useQuery(api.debug.inspectJWTClaims) : undefined;
 
   if (!isUserLoaded) {
     return <LoadingState />;
   }
 
-  if (!isSignedIn) {
+  if (!isSignedIn || !user) {
     return (
       <Card className="p-6">
         <h2 className="text-xl font-semibold mb-4">Authentication Required</h2>
