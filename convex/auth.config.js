@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { internal } from "./_generated/api";
 
 export default {
   providers: [
@@ -6,9 +6,13 @@ export default {
       domain: "clerk.alignometrix.com",
       applicationID: "convex",
 
-      validateToken: async (token) => {
-        // Log the incoming token
-        console.log("[AUTH_DEBUG] Incoming token:", JSON.stringify(token, null, 2));
+      validateToken: async (token, ctx) => {
+        // Log the incoming token using Convex's native logging
+        await ctx.runMutation(internal.debug.log, {
+          level: "debug",
+          message: "Incoming token",
+          data: token
+        });
         
         if (!token || !token.sub || !token.email) {
           throw new Error("Invalid token: missing required claims");
@@ -20,29 +24,24 @@ export default {
           sub: token.sub,
           subject: token.sub,
           email: token.email,
-          // Use the role from JWT claim
-          role: token.role || "user",
+          // Use the role from JWT claim, defaulting to "user"
+          role: typeof token.role === 'string' ? token.role : "user",
           // For super admin, use 'system' as org_id, otherwise use the one from JWT
-          orgId: token.role === "super_admin" ? "system" : (token.org_id || null),
+          orgId: token.role === "super_admin" ? "system" : token.org_id,
           // Add auth type
           type: "clerk",
           // Ensure token identifier is properly formatted
           tokenIdentifier: `https://clerk.alignometrix.com|${token.sub}`,
           // Store original token data in customClaims
-          customClaims: {
-            emailVerified: token.emailVerified,
-            familyName: token.familyName,
-            givenName: token.givenName,
-            issuer: token.issuer,
-            name: token.name,
-            phoneNumberVerified: token.phoneNumberVerified,
-            pictureUrl: token.pictureUrl,
-            updatedAt: token.updatedAt
-          }
+          customClaims: token
         };
 
         // Log the standardized token
-        console.log("[AUTH_DEBUG] Standardized token:", JSON.stringify(standardizedToken, null, 2));
+        await ctx.runMutation(internal.debug.log, {
+          level: "debug",
+          message: "Standardized token",
+          data: standardizedToken
+        });
         
         return standardizedToken;
       },

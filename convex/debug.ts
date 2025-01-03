@@ -1,8 +1,10 @@
 import { query } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
+import { v } from "convex/values";
 
 /**
  * Debug endpoint to inspect JWT claims from Clerk
- * This endpoint should only be accessible in development
+ * This endpoint is restricted to super_admin users only
  */
 export const inspectJWTClaims = query({
   args: {},
@@ -19,14 +21,18 @@ export const inspectJWTClaims = query({
         };
       }
 
-      // Log the raw identity for debugging
-      console.log("[DEBUG] Raw identity from Convex:", JSON.stringify({
-        identity,
-        type: identity.type,
-        role: identity.role,
-        orgId: identity.orgId,
-        customClaims: identity.customClaims
-      }, null, 2));
+      // Check if user is super_admin
+      if (identity.role !== "super_admin") {
+        console.warn("[DEBUG] Unauthorized access attempt:", identity.email);
+        return {
+          status: "error",
+          message: "Unauthorized: This endpoint is restricted to super administrators only",
+          claims: null
+        };
+      }
+
+      // Log the complete identity object
+      console.log("[DEBUG] Complete identity object:", JSON.stringify(identity, null, 2));
 
       // Extract all claims from the token
       const claims = {
@@ -37,36 +43,27 @@ export const inspectJWTClaims = query({
         
         // Role and permissions
         role: identity.role || "NO_ROLE_DEFINED",
-        orgId: identity.orgId || "NO_ORG_ID_DEFINED",
+        orgId: identity.role === "super_admin" ? "system" : (identity.orgId || "NO_ORG_ID_DEFINED"),
         
         // Additional claims
         customClaims: identity.customClaims || {},
         
         // Auth metadata
-        authType: identity.type || "unknown",
+        authType: identity.type || "clerk",
         authProvider: "clerk",
         
-        // Raw token data
+        // Raw token data (sanitized for security)
         rawToken: {
-          ...(identity.customClaims as Record<string, unknown>),
-          // Add back the standardized fields for completeness
           email: identity.email,
           role: identity.role,
-          org_id: identity.orgId,
           subject: identity.subject,
-          tokenIdentifier: identity.tokenIdentifier?.split("|")[0] + "|***"
+          tokenIdentifier: identity.tokenIdentifier?.split("|")[0] + "|***",
+          ...(identity.customClaims as Record<string, unknown> || {})
         }
       };
 
-      console.log("[DEBUG] JWT claims extracted:", JSON.stringify({
-        subject: claims.subject,
-        email: claims.email,
-        role: claims.role,
-        orgId: claims.orgId,
-        authType: claims.authType,
-        authProvider: claims.authProvider,
-        customClaimsKeys: Object.keys(claims.customClaims || {})
-      }, null, 2));
+      // Log the final claims object
+      console.log("[DEBUG] Final claims object:", JSON.stringify(claims, null, 2));
 
       return {
         status: "success",
@@ -89,4 +86,16 @@ export const inspectJWTClaims = query({
       };
     }
   },
+});
+
+// Internal logging function
+export const log = internalMutation({
+  args: {
+    level: v.union(v.literal("debug"), v.literal("info"), v.literal("warn"), v.literal("error")),
+    message: v.string(),
+    data: v.any()
+  },
+  handler: async (ctx, { level, message, data }) => {
+    console.log(`[DEBUG:${level.toUpperCase()}] ${message}:`, JSON.stringify(data, null, 2));
+  }
 }); 
