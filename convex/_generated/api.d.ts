@@ -15,6 +15,7 @@ import type {
 } from "convex/server";
 import type * as analytics from "../analytics.js";
 import type * as auditLogs from "../auditLogs.js";
+import type * as debug_auth from "../debug/auth.js";
 import type * as debug from "../debug.js";
 import type * as email from "../email.js";
 import type * as init from "../init.js";
@@ -46,6 +47,7 @@ import type * as utils from "../utils.js";
 declare const fullApi: ApiFromModules<{
   analytics: typeof analytics;
   auditLogs: typeof auditLogs;
+  "debug/auth": typeof debug_auth;
   debug: typeof debug;
   email: typeof email;
   init: typeof init;
