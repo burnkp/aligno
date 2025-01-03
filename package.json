@@ -37,6 +37,7 @@
     "@radix-ui/react-toast": "^1.1.5",
     "@tanstack/react-table": "^8.13.2",
     "@types/jsonwebtoken": "^9.0.7",
+    "@vercel/speed-insights": "^1.1.0",
     "axios": "^1.7.9",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",

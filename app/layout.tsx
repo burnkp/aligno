@@ -6,6 +6,7 @@ import { ConvexClientProvider } from "@/components/providers/convex-client-provi
 import { AuthLoading } from "@/components/providers/auth-loading";
 import { Suspense } from "react";
 import { LoadingState } from "@/components/ui/loading-state";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -22,6 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+        <SpeedInsights />
         <AuthProvider>
           <Suspense fallback={<LoadingState fullScreen />}>
             <AuthLoading>
