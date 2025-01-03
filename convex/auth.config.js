@@ -1,17 +1,28 @@
 export default {
   providers: [
     {
-      domain: "https://alignometrix.clerk.accounts.dev",
+      domain: "clerk.alignometrix.com",
       applicationID: "convex",
 
       validateToken: async (token) => {
-        if (!token || !token.sub || !token.email) {
-          throw new Error("Invalid token: missing required claims");
+        console.log("Validating token:", {
+          issuer: token.iss,
+          subject: token.sub,
+          hasEmail: !!token.email
+        });
+        
+        if (!token || !token.sub) {
+          throw new Error("Invalid token: missing subject claim");
         }
         return token;
       },
 
       roleFromToken: (token) => {
+        console.log("Processing role from token:", {
+          email: token.email,
+          existingRole: token.role
+        });
+
         if (token.role) {
           return token.role;
         }
