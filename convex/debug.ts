@@ -44,6 +44,10 @@ export const inspectJWTClaims = query({
         // Debug info
         rawToken: {
           ...identity,
+          // Include standardized fields in raw token view
+          role: identity.role,
+          orgId: identity.orgId,
+          type: identity.type,
           // Remove potentially sensitive data
           tokenIdentifier: identity.tokenIdentifier?.split(":")[0] + ":***",
         }
