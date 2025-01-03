@@ -40,6 +40,13 @@ export default function JWTInspector() {
   // Always call useQuery, but return undefined if not signed in
   const claimsQuery = useQuery(api.debug.inspectJWTClaims);
 
+  // Add debug logging
+  useEffect(() => {
+    if (claimsQuery) {
+      console.log("Claims Query Response:", claimsQuery);
+    }
+  }, [claimsQuery]);
+
   // Add error logging
   useEffect(() => {
     if (claimsQuery?.status === "error") {
@@ -86,7 +93,7 @@ export default function JWTInspector() {
     );
   }
 
-  if (processedQuery === undefined) {
+  if (!processedQuery?.claims) {
     return <LoadingState />;
   }
 
@@ -125,7 +132,7 @@ export default function JWTInspector() {
     </div>
   );
 
-  const jwtClaims = processedQuery.claims as JWTClaims;
+  const jwtClaims = processedQuery.claims;
 
   const sections = [
     {
@@ -153,7 +160,7 @@ export default function JWTInspector() {
     {
       title: "Custom Claims",
       claims: [
-        { label: "Custom Claims", value: jwtClaims.customClaims }
+        { label: "Custom Claims", value: jwtClaims.customClaims || {} }
       ]
     },
     {

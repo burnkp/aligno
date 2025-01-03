@@ -5,7 +5,7 @@ export default {
       applicationID: "convex",
 
       validateToken: async (token) => {
-        console.log("Validating token with claims:", JSON.stringify(token, null, 2));
+        console.log("Raw token:", JSON.stringify(token, null, 2));
         
         if (!token || !token.sub || !token.email) {
           throw new Error("Invalid token: missing required claims");
@@ -13,7 +13,6 @@ export default {
 
         // Create a standardized token with all required fields
         const standardizedToken = {
-          ...token,
           // Map standard claims
           sub: token.sub,
           subject: token.sub,
@@ -25,7 +24,16 @@ export default {
           // Add auth type
           type: "clerk",
           // Ensure token identifier is properly formatted
-          tokenIdentifier: `https://clerk.alignometrix.com|${token.sub}`
+          tokenIdentifier: `https://clerk.alignometrix.com|${token.sub}`,
+          // Store original token data
+          customClaims: {
+            ...token,
+            // Remove duplicated fields
+            sub: undefined,
+            email: undefined,
+            role: undefined,
+            org_id: undefined
+          }
         };
 
         console.log("Standardized token:", JSON.stringify(standardizedToken, null, 2));

@@ -20,8 +20,8 @@ export const inspectJWTClaims = query({
         };
       }
 
-      // Log the raw token for debugging
-      logger.debug("Raw identity object:", identity);
+      // Log the raw identity for debugging
+      logger.debug("Raw identity:", JSON.stringify(identity, null, 2));
 
       // Extract all claims from the token
       const claims = {
@@ -39,26 +39,27 @@ export const inspectJWTClaims = query({
         
         // Auth metadata
         authType: identity.type || "unknown",
-        authProvider: identity.tokenIdentifier?.split(":")[0] || "unknown",
+        authProvider: "clerk",
         
-        // Debug info
+        // Raw token data
         rawToken: {
-          ...identity,
-          // Include standardized fields in raw token view
+          ...(identity.customClaims as Record<string, unknown>),
+          // Add back the standardized fields for completeness
+          email: identity.email,
           role: identity.role,
-          orgId: identity.orgId,
-          type: identity.type,
-          // Remove potentially sensitive data
-          tokenIdentifier: identity.tokenIdentifier?.split(":")[0] + ":***",
+          org_id: identity.orgId,
+          subject: identity.subject,
+          tokenIdentifier: identity.tokenIdentifier?.split("|")[0] + "|***"
         }
       };
 
-      logger.info("inspectJWTClaims: Successfully extracted claims", {
+      logger.info("JWT claims extracted:", {
         subject: claims.subject,
         email: claims.email,
         role: claims.role,
         orgId: claims.orgId,
-        authType: claims.authType
+        authType: claims.authType,
+        authProvider: claims.authProvider
       });
 
       return {
@@ -67,7 +68,7 @@ export const inspectJWTClaims = query({
         claims
       };
     } catch (error) {
-      logger.error("inspectJWTClaims: Error extracting JWT claims", { 
+      logger.error("Error extracting JWT claims:", { 
         error,
         errorMessage: error instanceof Error ? error.message : "Unknown error",
         errorStack: error instanceof Error ? error.stack : undefined
