@@ -27,7 +27,7 @@ interface JWTClaims {
 
 export default function JWTInspector() {
   const { isLoaded: isUserLoaded, isSignedIn } = useUser();
-  const claimsQuery = useQuery(api["queries/debugJWT"].inspectJWTClaims);
+  const claimsQuery = useQuery(api.debug.inspectJWTClaims);
   const [isExpanded, setIsExpanded] = useState<Record<string, boolean>>({});
 
   if (!isUserLoaded) {
