@@ -25,9 +25,17 @@ interface JWTClaims {
   rawToken: any;
 }
 
+interface QueryResult {
+  status: string;
+  message: string;
+  claims: JWTClaims | null;
+  error?: string;
+}
+
 export default function JWTInspector() {
   const { isLoaded: isUserLoaded, isSignedIn } = useUser();
-  const claimsQuery = useQuery(api.debug.inspectJWTClaims);
+  // @ts-ignore - Ignoring type inference issues
+  const claimsQuery = useQuery(api.debug.inspectJWTClaims) as QueryResult | undefined;
   const [isExpanded, setIsExpanded] = useState<Record<string, boolean>>({});
 
   if (!isUserLoaded) {
