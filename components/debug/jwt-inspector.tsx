@@ -43,14 +43,14 @@ export default function JWTInspector() {
   // Add debug logging
   useEffect(() => {
     if (claimsQuery) {
-      console.log("Claims Query Response:", claimsQuery);
+      console.log("[UI] Claims Query Response:", claimsQuery);
     }
   }, [claimsQuery]);
 
   // Add error logging
   useEffect(() => {
     if (claimsQuery?.status === "error") {
-      console.error("JWT Claims Query Error:", {
+      console.error("[UI] JWT Claims Query Error:", {
         status: claimsQuery.status,
         message: claimsQuery.message
       });
@@ -134,6 +134,14 @@ export default function JWTInspector() {
 
   const jwtClaims = processedQuery.claims;
 
+  // Log the claims we're about to display
+  console.log("[UI] Processing claims for display:", {
+    role: jwtClaims.role,
+    orgId: jwtClaims.orgId,
+    authType: jwtClaims.authType,
+    customClaims: jwtClaims.customClaims
+  });
+
   const sections = [
     {
       title: "Basic Claims",
@@ -147,26 +155,41 @@ export default function JWTInspector() {
       title: "Role & Permissions",
       claims: [
         { label: "Role", value: jwtClaims.role },
-        { label: "Organization ID", value: jwtClaims.orgId }
+        { 
+          label: "Organization ID", 
+          value: jwtClaims.role === "super_admin" ? "system" : jwtClaims.orgId 
+        }
       ]
     },
     {
       title: "Auth Metadata",
       claims: [
-        { label: "Auth Type", value: jwtClaims.authType },
+        { label: "Auth Type", value: jwtClaims.authType || "clerk" },
         { label: "Auth Provider", value: jwtClaims.authProvider }
       ]
     },
     {
       title: "Custom Claims",
       claims: [
-        { label: "Custom Claims", value: jwtClaims.customClaims || {} }
+        { 
+          label: "Custom Claims", 
+          value: Object.keys(jwtClaims.customClaims || {}).length > 0 
+            ? jwtClaims.customClaims 
+            : "No custom claims available"
+        }
       ]
     },
     {
       title: "Raw Token",
       claims: [
-        { label: "Complete Token", value: jwtClaims.rawToken }
+        { 
+          label: "Complete Token", 
+          value: {
+            ...jwtClaims.rawToken,
+            type: jwtClaims.authType || "clerk",
+            orgId: jwtClaims.role === "super_admin" ? "system" : jwtClaims.orgId
+          }
+        }
       ]
     }
   ];

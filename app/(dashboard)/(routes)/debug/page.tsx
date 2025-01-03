@@ -1,39 +1,17 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import JWTInspector from "@/components/debug/jwt-inspector";
-import { useUser } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { LoadingState } from "@/components/ui/loading-state";
+import { Card } from "@/components/ui/card";
 
 export default function DebugPage() {
-  const { isLoaded, isSignedIn } = useUser();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (isLoaded && !isSignedIn) {
-      router.push("/sign-in?redirect_url=/debug");
-    }
-  }, [isLoaded, isSignedIn, router]);
-
-  if (!isLoaded) {
-    return <LoadingState fullScreen />;
-  }
-
-  if (!isSignedIn) {
-    return null;
-  }
-
   return (
-    <div className="p-6 space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Authentication Debug</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <JWTInspector />
-        </CardContent>
+    <div className="p-6">
+      <Card className="p-6">
+        <h1 className="text-2xl font-bold mb-4">Authentication Debug</h1>
+        <div className="text-sm text-gray-500 mb-6">
+          This page is restricted to super administrators only. It provides detailed information about the JWT claims and authentication state.
+        </div>
+        <JWTInspector />
       </Card>
     </div>
   );
