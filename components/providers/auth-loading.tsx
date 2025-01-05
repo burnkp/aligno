@@ -1,30 +1,24 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
+import { Card } from "@/components/ui/card";
 import { LoadingState } from "@/components/ui/loading-state";
-import { useEffect, useState } from "react";
 
-interface AuthLoadingProps {
-  children: React.ReactNode;
+export function AuthLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <Card className="p-8 max-w-md w-full space-y-4">
+        <div className="flex flex-col items-center space-y-4">
+          <LoadingState className="h-12 w-12" text="Initializing authentication..." />
+        </div>
+      </Card>
+    </div>
+  );
 }
 
-export function AuthLoading({ children }: AuthLoadingProps) {
-  const { isLoaded } = useAuth();
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-
-  useEffect(() => {
-    // After first load, set initialLoad to false
-    if (isLoaded) {
-      const timer = setTimeout(() => {
-        setIsInitialLoad(false);
-      }, 300); // Small delay to prevent flash
-      return () => clearTimeout(timer);
-    }
-  }, [isLoaded]);
-
-  if (!isLoaded || isInitialLoad) {
-    return <LoadingState fullScreen text="Loading..." />;
-  }
-
-  return <>{children}</>;
+export function AuthLoadingMinimal() {
+  return (
+    <div className="flex items-center justify-center p-4">
+      <LoadingState className="h-4 w-4" text="Loading authentication..." />
+    </div>
+  );
 } 

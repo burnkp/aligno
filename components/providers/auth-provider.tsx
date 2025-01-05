@@ -1,13 +1,36 @@
 "use client";
 
-import { ClerkProvider } from "@clerk/nextjs";
-import { ReactNode, useEffect } from "react";
+import { ClerkProvider, useAuth } from "@clerk/nextjs";
+import { ReactNode, useEffect, useState } from "react";
 import { LoadingState } from "@/components/ui/loading-state";
 import logger from "@/utils/logger";
+import { AuthErrorBoundary } from "./auth-error-boundary";
 
 interface AuthProviderProps {
   children: ReactNode;
 }
+
+interface AuthStateProps {
+  children: ReactNode;
+}
+
+const AuthState = ({ children }: AuthStateProps) => {
+  const { isLoaded, isSignedIn } = useAuth();
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  useEffect(() => {
+    if (isLoaded) {
+      logger.info("Auth state initialized", { isSignedIn });
+      setIsInitialized(true);
+    }
+  }, [isLoaded, isSignedIn]);
+
+  if (!isInitialized) {
+    return <LoadingState />;
+  }
+
+  return <>{children}</>;
+};
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
@@ -55,7 +78,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         window.location.href = to;
       }}
     >
-      {children}
+      <AuthErrorBoundary>
+        <AuthState>
+          {children}
+        </AuthState>
+      </AuthErrorBoundary>
     </ClerkProvider>
   );
 };
