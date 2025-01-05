@@ -27,12 +27,10 @@ export default function RootLayout({
         <SpeedInsights />
         <Analytics />
         <AuthProvider>
-          <Suspense fallback={<LoadingState fullScreen />}>
-            <AuthLoading>
-              <ConvexClientProvider>
-                {children}
-              </ConvexClientProvider>
-            </AuthLoading>
+          <Suspense fallback={<AuthLoading />}>
+            <ConvexClientProvider>
+              {children}
+            </ConvexClientProvider>
           </Suspense>
         </AuthProvider>
       </body>
