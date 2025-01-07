@@ -57,7 +57,7 @@ export default authMiddleware({
 
       // If authenticated, check role-based access
       if (auth.userId) {
-        const userRole = auth.sessionClaims?.role as string || "user";
+        const userRole = auth.sessionClaims?.role as string || "team_member";
         
         // Check super admin routes
         if (ROLE_PROTECTED_ROUTES.SUPER_ADMIN.some(route => path.startsWith(route))) {

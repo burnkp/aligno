@@ -255,7 +255,7 @@ export const getUserAnalytics = query({
       teams: {
         total: userTeams.length,
         roles: userTeams.map(
-          (team) => team.members.find((m) => m.userId === args.userId)?.role || "member"
+          (team) => team.members.find((m) => m.userId === args.userId)?.role || "team_member"
         ),
       },
       performance: {

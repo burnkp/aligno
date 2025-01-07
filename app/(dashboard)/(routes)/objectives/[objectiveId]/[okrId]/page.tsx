@@ -31,7 +31,7 @@ interface Team {
   leaderId?: string;
   members: Array<{
     userId: string;
-    role: "leader" | "member";
+    role: Role;
     joinedAt: string;
   }>;
 }

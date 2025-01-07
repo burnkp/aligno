@@ -8,6 +8,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
 import logger from "@/utils/logger";
+import { Role } from "@/utils/permissions";
 
 import {
   Dialog,
@@ -85,7 +86,7 @@ export function CreateTeamModal({ isOpen, onClose }: CreateTeamModalProps) {
           userId: user.id,
           email: primaryEmail,
           name: user.fullName || user.firstName || "Unknown",
-          role: "leader",
+          role: "team_leader" as Role,
           joinedAt: now,
         }],
       });

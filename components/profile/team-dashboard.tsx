@@ -26,8 +26,8 @@ export function TeamDashboard({ teamId }: TeamDashboardProps) {
   }
 
   const objectives = allObjectives.filter(obj => obj.teamId === teamId);
-  const userRole = teamData.members.find(m => m.userId === teamData.leaderId)?.role || "member";
-  const canInvite = userRole === "admin" || userRole === "leader";
+  const userRole = teamData.members.find(m => m.userId === teamData.leaderId)?.role || "team_member";
+  const canInvite = userRole === "org_admin" || userRole === "team_leader";
 
   return (
     <div className="space-y-8">

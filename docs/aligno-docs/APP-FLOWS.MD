@@ -46,7 +46,7 @@
 2. Fills invitation form:
    - Email
    - Name
-   - Role (Leader/Member)
+   - Role (Team Leader/Team Member/Org Admin)
 3. System:
    - Generates invitation token
    - Stores invitation in database

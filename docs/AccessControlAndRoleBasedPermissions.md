@@ -50,7 +50,12 @@ teams: defineTable({
       userId: v.string(),
       email: v.string(),
       name: v.string(),
-      role: v.union(v.literal("admin"), v.literal("leader"), v.literal("member")),
+      role: v.union(
+        v.literal("super_admin"),
+        v.literal("org_admin"),
+        v.literal("team_leader"),
+        v.literal("team_member")
+      ),
       joinedAt: v.optional(v.string())
     })
   ),
@@ -189,14 +194,14 @@ export const RequirePermission = ({
 ### 1. Unit Tests
 ```typescript
 describe("Permission System", () => {
-  test("Admin has all permissions", () => {
-    expect(hasPermission("admin", "manage_team")).toBe(true);
-    expect(hasPermission("admin", "invite_members")).toBe(true);
+  test("Super admin has all permissions", () => {
+    expect(hasPermission("super_admin", "manage_team")).toBe(true);
+    expect(hasPermission("super_admin", "invite_members")).toBe(true);
   });
 
-  test("Member has limited permissions", () => {
-    expect(hasPermission("member", "manage_team")).toBe(false);
-    expect(hasPermission("member", "view_okrs")).toBe(true);
+  test("Team member has limited permissions", () => {
+    expect(hasPermission("team_member", "manage_team")).toBe(false);
+    expect(hasPermission("team_member", "view_team")).toBe(true);
   });
 });
 ```

@@ -40,7 +40,7 @@ async function withOrganizationContext<T>(
 type TeamContext = {
   teamId: Id<"teams">;
   organizationId: Id<"organizations">;
-  role: UserRole;
+  role: "super_admin" | "org_admin" | "team_leader" | "team_member";
   permissions: Permission[];
 };
 
@@ -114,7 +114,7 @@ interface Team {
     userId: string;
     email?: string; // For backward compatibility
     name?: string; // For backward compatibility
-    role: "admin" | "leader" | "member";
+    role: "super_admin" | "org_admin" | "team_leader" | "team_member";
     joinedAt?: string;
   }>;
   createdAt?: string;
@@ -179,10 +179,11 @@ async function checkTeamAccess(
   if (!member) return false;
 
   switch (member.role) {
-    case "admin":
-    case "leader":
+    case "super_admin":
+    case "org_admin":
+    case "team_leader":
       return true;
-    case "member":
+    case "team_member":
       return requiredPermission === "read";
     default:
       return false;

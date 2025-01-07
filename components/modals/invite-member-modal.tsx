@@ -21,7 +21,7 @@ export function InviteMemberModal({ isOpen, onClose, teamId }: InviteMemberModal
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState<"member" | "leader">("member");
+  const [role, setRole] = useState<"team_member" | "team_leader">("team_member");
   const [isLoading, setIsLoading] = useState(false);
 
   const createInvitation = useMutation(api.invitations.createInvitation);
@@ -46,7 +46,7 @@ export function InviteMemberModal({ isOpen, onClose, teamId }: InviteMemberModal
       onClose();
       setEmail("");
       setName("");
-      setRole("member");
+      setRole("team_member");
     } catch (error) {
       toast({
         title: "Error",
@@ -89,13 +89,13 @@ export function InviteMemberModal({ isOpen, onClose, teamId }: InviteMemberModal
           </div>
           <div className="space-y-2">
             <Label htmlFor="role">Role</Label>
-            <Select value={role} onValueChange={(value: "member" | "leader") => setRole(value)}>
+            <Select value={role} onValueChange={(value: "team_member" | "team_leader") => setRole(value)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="member">Member</SelectItem>
-                <SelectItem value="leader">Leader</SelectItem>
+                <SelectItem value="team_member">Member</SelectItem>
+                <SelectItem value="team_leader">Leader</SelectItem>
               </SelectContent>
             </Select>
           </div>

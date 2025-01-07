@@ -153,7 +153,7 @@ export const fixTeamsTable = mutation({
         createdAt: team.createdAt || now,
         updatedAt: team.updatedAt || now,
         // Set leaderId to the first admin member if not set
-        leaderId: team.leaderId || team.members.find(m => m.role === "admin")?.userId || team.createdBy
+        leaderId: team.leaderId || team.members.find(m => m.role === "team_leader")?.userId || team.createdBy
       });
     }
   },
@@ -200,7 +200,7 @@ export const createDefaultOrgAndFixTeams = mutation({
         organizationId: defaultOrgId,
         createdAt: team.createdAt || now,
         updatedAt: team.updatedAt || now,
-        leaderId: team.leaderId || team.members.find(m => m.role === "admin")?.userId || team.createdBy
+        leaderId: team.leaderId || team.members.find(m => m.role === "team_leader")?.userId || team.createdBy
       });
     }
 

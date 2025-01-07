@@ -32,6 +32,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { Role } from "@/utils/permissions";
 
 interface CreateTeamModalProps {
   isOpen: boolean;
@@ -84,7 +85,7 @@ export const CreateTeamModal = ({ isOpen, onClose }: CreateTeamModalProps) => {
             userId: formData.leaderId,
             email: leader.email,
             name: leader.name,
-            role: "leader",
+            role: "team_leader" as Role,
             joinedAt: new Date().toISOString(),
           },
         ],

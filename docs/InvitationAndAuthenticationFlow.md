@@ -134,7 +134,12 @@ teams: defineTable({
       userId: v.string(),
       email: v.string(),
       name: v.string(),
-      role: v.union(v.literal("admin"), v.literal("leader"), v.literal("member")),
+      role: v.union(
+        v.literal("super_admin"),
+        v.literal("org_admin"),
+        v.literal("team_leader"),
+        v.literal("team_member")
+      ),
       joinedAt: v.optional(v.string())
     })
   )
@@ -144,14 +149,14 @@ invitations: defineTable({
   teamId: v.id("teams"),
   email: v.string(),
   name: v.string(),
-  role: v.union(v.literal("leader"), v.literal("member")),
-  token: v.string(),
-  status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("expired")),
-  expiresAt: v.string(),
-  createdAt: v.optional(v.string()),
-  createdBy: v.optional(v.string()),
-  acceptedAt: v.optional(v.string()),
-  acceptedBy: v.optional(v.string())
+  role: v.union(
+    v.literal("org_admin"),
+    v.literal("team_leader"),
+    v.literal("team_member")
+  ),
+  status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("rejected")),
+  createdAt: v.string(),
+  updatedAt: v.string()
 })
 ```
 

@@ -52,7 +52,7 @@ args: {
 teamId: v.string(),
 email: v.string(),
 name: v.string(),
-role: v.union(v.literal("leader"), v.literal("member")),
+role: v.union(v.literal("super_admin"), v.literal("org_admin"), v.literal("team_leader"), v.literal("team_member")),
 },
 handler: async (ctx, args) => {
 const identity = await ctx.auth.getUserIdentity();
@@ -101,7 +101,7 @@ ypescript
 teamId: Id<"teams">;
 email: string;
 name: string;
-role: "leader" | "member";
+role: "super_admin" | "org_admin" | "team_leader" | "team_member";
 token: string;
 status: "pending" | "accepted" | "expired";
 expiresAt: string;

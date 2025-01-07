@@ -33,7 +33,12 @@ teams: defineTable({
   members: v.array(
     v.object({
       userId: v.string(),
-      role: v.union(v.literal("leader"), v.literal("member")),
+      role: v.union(
+        v.literal("super_admin"),
+        v.literal("org_admin"),
+        v.literal("team_leader"),
+        v.literal("team_member")
+      ),
       joinedAt: v.string(),
     })
   ),

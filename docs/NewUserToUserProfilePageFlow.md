@@ -60,7 +60,7 @@ typescript:docs/NewUserToUserProfilePageFlow.md
 teamId: Id<"teams">;
 email: string;
 name: string;
-role: "leader" | "member";
+role: "super_admin" | "org_admin" | "team_leader" | "team_member";
 token: string;
 status: "pending" | "accepted" | "expired";
 expiresAt: string;

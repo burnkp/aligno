@@ -24,8 +24,8 @@ export default {
           sub: token.sub,
           subject: token.sub,
           email: token.email,
-          // Use the role from JWT claim, defaulting to "user"
-          role: typeof token.role === 'string' ? token.role : "user",
+          // Use the role from JWT claim, defaulting to "team_member"
+          role: typeof token.role === 'string' ? token.role : "team_member",
           // For super admin, use 'system' as org_id, otherwise use the one from JWT
           orgId: token.role === "super_admin" ? "system" : token.org_id,
           // Add auth type
@@ -48,7 +48,7 @@ export default {
 
       // Role is now set in validateToken, this is just a backup
       roleFromToken: (token) => {
-        return token.role || "user";
+        return token.role || "team_member";
       },
     },
   ],

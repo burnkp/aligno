@@ -23,6 +23,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import logger from "@/utils/logger";
 import { useUser } from "@clerk/nextjs";
+import { Role } from "@/utils/permissions";
 
 interface InviteMemberModalProps {
   isOpen: boolean;
@@ -30,7 +31,7 @@ interface InviteMemberModalProps {
   teamId: Id<"teams">;
 }
 
-type InvitationRole = "org_admin" | "team_leader" | "team_member";
+type InvitationRole = Exclude<Role, "super_admin">;
 
 export function InviteMemberModal({ isOpen, onClose, teamId }: InviteMemberModalProps) {
   const { user } = useUser();
@@ -124,9 +125,9 @@ export function InviteMemberModal({ isOpen, onClose, teamId }: InviteMemberModal
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="team_member">Team Member</SelectItem>
-                <SelectItem value="team_leader">Team Leader</SelectItem>
                 <SelectItem value="org_admin">Organization Admin</SelectItem>
+                <SelectItem value="team_leader">Team Leader</SelectItem>
+                <SelectItem value="team_member">Team Member</SelectItem>
               </SelectContent>
             </Select>
           </div>
