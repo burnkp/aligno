@@ -6,31 +6,12 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Plus } from "lucide-react";
+import { Team, TeamMember } from "@/types/teams";
 
 import { Button } from "@/components/ui/button";
 import { TeamCard } from "@/components/teams/team-card";
 import { CreateTeamModal } from "@/components/teams/create-team-modal";
 import { InviteMemberModal } from "@/components/teams/invite-member-modal";
-
-interface TeamMember {
-  userId: string;
-  email: string;
-  name: string;
-  role: "leader" | "member" | "admin";
-  joinedAt: string;
-}
-
-interface Team {
-  _id: Id<"teams">;
-  name: string;
-  description?: string;
-  organizationId: Id<"organizations">;
-  leaderId: string;
-  members: TeamMember[];
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-}
 
 export default function TeamsPage() {
   const { user } = useUser();

@@ -31,7 +31,7 @@ interface TeamInvitation {
   _id: Id<"invitations">;
   name: string;
   email: string;
-  role: "org_admin" | "team_leader" | "team_member";
+  role: Role;
   status: "pending" | "accepted" | "expired" | "bounced";
 }
 
