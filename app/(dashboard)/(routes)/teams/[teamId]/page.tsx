@@ -10,6 +10,7 @@ import { TeamObjectives } from "@/components/teams/team-objectives";
 import { TeamKPIs } from "@/components/teams/team-kpis";
 import { TeamOKRs } from "@/components/teams/team-okrs";
 import { Id } from "@/convex/_generated/dataModel";
+import { Role } from "@/utils/permissions";
 
 interface Team {
   _id: Id<any>;
@@ -19,13 +20,13 @@ interface Team {
   leaderId?: string;
   members: Array<{
     userId: string;
-    role: "leader" | "member";
+    role: Role;
     joinedAt: string;
   }>;
 }
 
 interface UserAccess {
-  role: "leader" | "member" | "admin";
+  role: Role;
   canEdit: boolean;
   canDelete: boolean;
   canInvite: boolean;
