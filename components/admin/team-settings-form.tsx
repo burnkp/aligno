@@ -71,12 +71,10 @@ export function TeamSettingsForm({ team }: TeamSettingsFormProps) {
     try {
       await updateTeam({
         teamId: team._id,
-        updates: {
-          name: formData.name,
-          description: formData.description,
-          leaderId: formData.leaderId,
-          settings: formData.settings,
-        },
+        name: formData.name,
+        description: formData.description,
+        leaderId: formData.leaderId,
+        settings: formData.settings,
       });
 
       toast({

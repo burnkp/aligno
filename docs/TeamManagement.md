@@ -73,18 +73,16 @@ teams: defineTable({
 export const updateTeam = mutation({
   args: {
     teamId: v.id("teams"),
-    updates: v.object({
-      name: v.optional(v.string()),
-      description: v.optional(v.string()),
-      leaderId: v.optional(v.string()),
-      settings: v.optional(
-        v.object({
-          isPrivate: v.boolean(),
-          allowMemberInvites: v.boolean(),
-          requireLeaderApproval: v.boolean(),
-        })
-      ),
-    }),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    leaderId: v.optional(v.string()),
+    settings: v.optional(
+      v.object({
+        isPrivate: v.boolean(),
+        allowMemberInvites: v.boolean(),
+        requireLeaderApproval: v.boolean(),
+      })
+    ),
   },
   // Implementation details...
 });
