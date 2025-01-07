@@ -11,12 +11,8 @@ import { TeamMembersTable } from "@/components/admin/team-members-table";
 import { TeamSettingsForm } from "@/components/admin/team-settings-form";
 import { TeamActivityLog } from "@/components/admin/team-activity-log";
 import { Id } from "@convex/_generated/dataModel";
-
-interface TeamMember {
-  userId: string;
-  role: "leader" | "member";
-  joinedAt: string;
-}
+import { TeamMember } from "@/types/teams";
+import { Role } from "@/utils/permissions";
 
 interface TeamSettings {
   _id: Id<"teams">;
@@ -44,18 +40,28 @@ export default function TeamDetailsPage() {
   }
 
   // Transform members data to match TeamMembersTable's expected format
-  const transformedMembers: TeamMember[] = team.members.map(member => ({
-    userId: member.userId,
-    role: member.role === "admin" ? "leader" : "member",
-    joinedAt: member.joinedAt,
-  }));
+  const transformedMembers: TeamMember[] = team.members.map(member => {
+    let role: Role;
+    if (member.role === "super_admin") role = "super_admin";
+    else if (member.role === "org_admin") role = "org_admin";
+    else if (member.role === "team_leader") role = "team_leader";
+    else role = "team_member";
+
+    return {
+      userId: member.userId,
+      role,
+      joinedAt: member.joinedAt,
+      email: member.email,
+      name: member.name
+    };
+  });
 
   // Transform team data to match TeamSettingsForm's expected format
   const teamSettings: TeamSettings = {
     _id: team._id,
     name: team.name,
     description: team.description,
-    leaderId: team.leaderId || team.members.find(m => m.role === "leader")?.userId || team.members[0].userId,
+    leaderId: team.leaderId || team.members.find(m => ["team_leader", "org_admin", "super_admin"].includes(m.role))?.userId || team.members[0].userId,
     settings: {
       isPrivate: team.settings?.isPrivate,
       allowMemberInvites: team.settings?.allowMemberInvites,

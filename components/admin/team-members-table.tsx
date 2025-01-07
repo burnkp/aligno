@@ -17,12 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { UserPlus } from "lucide-react";
 import { AddTeamMemberModal } from "./add-team-member-modal";
 import logger from "@/utils/logger";
-
-interface TeamMember {
-  userId: string;
-  role: "leader" | "member";
-  joinedAt: string;
-}
+import { TeamMember } from "@/types/teams";
 
 interface TeamMembersTableProps {
   teamId: Id<"teams">;
@@ -38,6 +33,19 @@ export function TeamMembersTable({ teamId, members }: TeamMembersTableProps) {
       await removeMember({ teamId, userId });
     } catch (error) {
       logger.error("Failed to remove member:", error);
+    }
+  };
+
+  const getRoleBadgeVariant = (role: TeamMember["role"]) => {
+    switch (role) {
+      case "super_admin":
+        return "destructive";
+      case "org_admin":
+        return "default";
+      case "team_leader":
+        return "secondary";
+      default:
+        return "outline";
     }
   };
 
@@ -64,12 +72,12 @@ export function TeamMembersTable({ teamId, members }: TeamMembersTableProps) {
             <TableRow key={member.userId}>
               <TableCell>{member.userId}</TableCell>
               <TableCell>
-                <Badge variant={member.role === "leader" ? "default" : "secondary"}>
-                  {member.role}
+                <Badge variant={getRoleBadgeVariant(member.role)}>
+                  {member.role.replace("_", " ")}
                 </Badge>
               </TableCell>
               <TableCell>
-                {new Date(member.joinedAt).toLocaleDateString()}
+                {member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : 'N/A'}
               </TableCell>
               <TableCell className="text-right">
                 <Button
