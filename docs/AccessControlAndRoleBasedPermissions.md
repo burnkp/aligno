@@ -14,18 +14,20 @@ This document details the implementation of access control and role-based permis
 
 ### 2. Role Hierarchy
 ```typescript
-type Role = "admin" | "leader" | "member";
+type Role = "super_admin" | "org_admin" | "team_leader" | "team_member";
 
 const ROLE_HIERARCHY = {
-  admin: 3,
-  leader: 2,
-  member: 1,
+  super_admin: 4,
+  org_admin: 3,
+  team_leader: 2,
+  team_member: 1,
 } as const;
 
 const ROLE_PERMISSIONS = {
-  admin: ["manage_team", "invite_members", "manage_okrs", "manage_members", "view_analytics"],
-  leader: ["invite_members", "manage_okrs", "view_analytics"],
-  member: ["view_okrs", "update_assigned_okrs"],
+  super_admin: ["manage_all"],
+  org_admin: ["manage_team", "invite_members", "manage_okrs", "manage_members", "view_analytics", "create_team"],
+  team_leader: ["invite_members", "manage_okrs", "view_analytics", "manage_team"],
+  team_member: ["view_okrs", "update_assigned_okrs", "view_team"],
 } as const;
 ```
 

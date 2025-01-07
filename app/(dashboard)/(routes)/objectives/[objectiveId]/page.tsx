@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { Role } from "@/utils/permissions";
 
 import { Button } from "@/components/ui/button";
 import { OKRCard } from "@/components/okr/okr-card";
@@ -35,7 +36,7 @@ interface Team {
     userId: string;
     email: string;
     name: string;
-    role: "leader" | "member" | "admin";
+    role: Role;
     joinedAt: string;
   }>;
   createdBy: string;

@@ -1,5 +1,5 @@
 // Role-based access control utility functions
-export type Role = "admin" | "leader" | "member";
+import { Role } from "@/utils/permissions";
 
 export interface AccessControl {
   canCreateTeam: boolean;
@@ -12,7 +12,8 @@ export interface AccessControl {
 
 export const getRolePermissions = (role: Role): AccessControl => {
   switch (role) {
-    case "admin":
+    case "super_admin":
+    case "org_admin":
       return {
         canCreateTeam: true,
         canInviteMembers: true,
@@ -21,7 +22,7 @@ export const getRolePermissions = (role: Role): AccessControl => {
         canCreateOKRs: true,
         canUpdateProgress: true,
       };
-    case "leader":
+    case "team_leader":
       return {
         canCreateTeam: false,
         canInviteMembers: true,
@@ -30,7 +31,7 @@ export const getRolePermissions = (role: Role): AccessControl => {
         canCreateOKRs: true,
         canUpdateProgress: true,
       };
-    case "member":
+    case "team_member":
       return {
         canCreateTeam: false,
         canInviteMembers: false,

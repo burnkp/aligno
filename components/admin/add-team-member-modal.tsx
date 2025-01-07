@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import logger from "@/utils/logger";
+import { Role } from "@/utils/permissions";
 
 interface AddTeamMemberModalProps {
   isOpen: boolean;
@@ -30,7 +31,7 @@ interface AddTeamMemberModalProps {
 
 interface FormData {
   userId: string;
-  role: "leader" | "member" | "admin";
+  role: Role;
 }
 
 export function AddTeamMemberModal({
@@ -44,7 +45,7 @@ export function AddTeamMemberModal({
 
   const [formData, setFormData] = useState<FormData>({
     userId: "",
-    role: "member",
+    role: "team_member",
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -64,7 +65,7 @@ export function AddTeamMemberModal({
         userId: formData.userId,
         email: selectedUser.email,
         name: selectedUser.name,
-        role: formData.role,
+        role: formData.role as Role,
       });
 
       toast({
@@ -75,7 +76,7 @@ export function AddTeamMemberModal({
       onClose();
       setFormData({
         userId: "",
-        role: "member",
+        role: "team_member",
       });
     } catch (error) {
       logger.error(error);
@@ -124,7 +125,7 @@ export function AddTeamMemberModal({
               onValueChange={(value) =>
                 setFormData({
                   ...formData,
-                  role: value as "leader" | "member" | "admin",
+                  role: value as Role,
                 })
               }
             >
@@ -132,9 +133,9 @@ export function AddTeamMemberModal({
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="leader">Team Leader</SelectItem>
-                <SelectItem value="member">Team Member</SelectItem>
-                <SelectItem value="admin">Team Admin</SelectItem>
+                <SelectItem value="team_leader">Team Leader</SelectItem>
+                <SelectItem value="team_member">Team Member</SelectItem>
+                <SelectItem value="org_admin">Organization Admin</SelectItem>
               </SelectContent>
             </Select>
           </div>

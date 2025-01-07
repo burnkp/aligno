@@ -150,16 +150,16 @@ This document outlines the comprehensive plan for fixing authentication issues b
 ## Testing Plan
 
 ### Authentication Flow Tests
-- [ ] Basic sign-in/sign-out flow
-- [ ] Social authentication providers
-- [ ] Token refresh mechanism
-- [ ] Session persistence
+- [x] Basic sign-in/sign-out flow
+- [x] Social authentication providers
+- [x] Token refresh mechanism
+- [x] Session persistence
 
 ### Edge Cases
-- [ ] Token expiration during active session
-- [ ] Multiple device login attempts
-- [ ] Invalid/corrupted JWT handling
-- [ ] Network interruption scenarios
+- [x] Token expiration during active session
+- [x] Multiple device login attempts
+- [x] Invalid/corrupted JWT handling
+- [x] Network interruption scenarios
 
 ### Role-Based Access Tests
 - [ ] Super admin access

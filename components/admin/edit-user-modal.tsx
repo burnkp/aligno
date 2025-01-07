@@ -17,6 +17,7 @@ import {
 } from "../ui/select";
 import { Id } from "@convex/_generated/dataModel";
 import logger from "@/utils/logger";
+import { Role } from "@/utils/permissions";
 
 interface EditUserModalProps {
   isOpen: boolean;
@@ -30,12 +31,10 @@ interface EditUserModalProps {
   };
 }
 
-type UserRole = "org_admin" | "team_leader" | "team_member";
-
 interface FormData {
   name: string;
   email: string;
-  role: UserRole;
+  role: Role;
   organizationId: string;
 }
 
@@ -52,7 +51,7 @@ export const EditUserModal = ({
   const [formData, setFormData] = useState<FormData>({
     name: initialData.name,
     email: initialData.email,
-    role: initialData.role as UserRole,
+    role: initialData.role as Role,
     organizationId: initialData.organizationId,
   });
 
@@ -94,7 +93,7 @@ export const EditUserModal = ({
   const handleRoleChange = (value: string) => {
     setFormData({
       ...formData,
-      role: value as UserRole,
+      role: value as Role,
     });
   };
 

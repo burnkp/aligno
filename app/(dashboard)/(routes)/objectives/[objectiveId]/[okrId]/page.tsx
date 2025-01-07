@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { Role } from "@/utils/permissions";
 
 import { Button } from "@/components/ui/button";
 import { KPICard } from "@/components/kpi/kpi-card";

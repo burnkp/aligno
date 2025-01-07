@@ -1,8 +1,8 @@
 import { v } from "convex/values";
 import { DatabaseReader, DatabaseWriter, QueryCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
+import { Role } from "@/utils/permissions";
 
-export type UserRole = "super_admin" | "org_admin" | "team_leader" | "team_member";
 export type PermissionAction = "create" | "read" | "update" | "delete" | "manage";
 export type Resource = "organization" | "team" | "user" | "task" | "analytics";
 

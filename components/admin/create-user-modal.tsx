@@ -17,18 +17,17 @@ import {
 } from "../ui/select";
 import { Id } from "@convex/_generated/dataModel";
 import logger from "@/utils/logger";
+import { Role } from "@/utils/permissions";
 
 interface CreateUserModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type UserRole = "org_admin" | "team_leader" | "team_member";
-
 interface FormData {
   name: string;
   email: string;
-  role: UserRole;
+  role: Role;
   organizationId: string;
 }
 
@@ -89,7 +88,7 @@ export const CreateUserModal = ({ isOpen, onClose }: CreateUserModalProps) => {
   const handleRoleChange = (value: string) => {
     setFormData({
       ...formData,
-      role: value as UserRole,
+      role: value as Role,
     });
   };
 

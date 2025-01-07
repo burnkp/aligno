@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { TeamDashboard } from "@/components/profile/team-dashboard";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Id } from "@/convex/_generated/dataModel";
+import { Role } from "@/utils/permissions";
 
 interface Team {
   _id: Id<any>;
@@ -16,7 +17,7 @@ interface Team {
   leaderId?: string;
   members: Array<{
     userId: string;
-    role: "leader" | "member";
+    role: Role;
     joinedAt: string;
   }>;
 }

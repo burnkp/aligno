@@ -9,6 +9,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CreateObjectiveModal } from "@/components/objectives/create-objective-modal";
 import { TeamObjectivesList } from "@/components/profile/team-objectives-list";
+import { Role } from "@/utils/permissions";
 
 interface Team {
   _id: Id<"teams">;
@@ -20,7 +21,7 @@ interface Team {
     userId: string;
     email: string;
     name: string;
-    role: "leader" | "member" | "admin";
+    role: Role;
     joinedAt: string;
   }>;
   createdBy: string;
