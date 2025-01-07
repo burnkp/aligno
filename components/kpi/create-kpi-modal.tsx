@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Role } from "@/utils/permissions";
 
 interface Team {
   _id: Id<"teams">;
@@ -40,7 +41,7 @@ interface Team {
   members: Array<{
     userId: string;
     name: string;
-    role: "leader" | "member" | "admin";
+    role: Role;
   }>;
 }
 

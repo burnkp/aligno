@@ -14,12 +14,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Role } from "@/utils/permissions";
 
 interface TeamMember {
   userId: string;
   email: string;
   name: string;
-  role: "leader" | "member" | "admin";
+  role: Role;
   joinedAt: string;
 }
 
@@ -53,6 +54,19 @@ export function TeamMembersList({ members, canManage, teamId }: TeamMembersListP
     }
   };
 
+  const getRoleBadgeVariant = (role: Role) => {
+    switch (role) {
+      case "super_admin":
+        return "destructive";
+      case "org_admin":
+        return "default";
+      case "team_leader":
+        return "secondary";
+      default:
+        return "outline";
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -70,8 +84,10 @@ export function TeamMembersList({ members, canManage, teamId }: TeamMembersListP
                 <p className="text-sm text-muted-foreground">{member.email}</p>
               </div>
               <div className="flex items-center space-x-2">
-                <Badge>{member.role}</Badge>
-                {canManage && member.role !== "admin" && (
+                <Badge variant={getRoleBadgeVariant(member.role)}>
+                  {member.role.replace("_", " ")}
+                </Badge>
+                {canManage && member.role !== "super_admin" && member.role !== "org_admin" && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon">
