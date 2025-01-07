@@ -11,6 +11,7 @@ import { CreateTeamModal } from "@/components/admin/create-team-modal";
 import { PageHeader } from "@/components/page-header";
 import { useParams } from "next/navigation";
 import { Id } from "@convex/_generated/dataModel";
+import { Role } from "@/utils/permissions";
 
 export default function TeamsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -24,12 +25,20 @@ export default function TeamsPage() {
     name: team.name,
     description: team.description,
     organizationId: team.organizationId || organizationId.toString(),
-    leaderId: team.leaderId || team.members.find(m => m.role === "leader")?.userId || team.members[0]?.userId || "",
-    members: team.members.map(member => ({
-      userId: member.userId,
-      role: member.role === "admin" ? "leader" : "member",
-      joinedAt: member.joinedAt,
-    })),
+    leaderId: team.leaderId || team.members.find(m => ["team_leader", "org_admin", "super_admin"].includes(m.role))?.userId || team.members[0]?.userId || "",
+    members: team.members.map(member => {
+      let role: Role;
+      if (member.role === "super_admin") role = "super_admin";
+      else if (member.role === "org_admin") role = "org_admin";
+      else if (member.role === "team_leader") role = "team_leader";
+      else role = "team_member";
+
+      return {
+        userId: member.userId,
+        role,
+        joinedAt: member.joinedAt,
+      };
+    }),
     createdAt: team.createdAt || new Date().toISOString(),
     updatedAt: team.updatedAt || new Date().toISOString(),
   })) as Team[] | undefined;

@@ -4,6 +4,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "@/components/ui/data-table-column-header";
 import { DataTableRowActions } from "@/components/ui/data-table-row-actions";
+import { Role } from "@/utils/permissions";
 
 export type Team = {
   _id: string;
@@ -13,7 +14,7 @@ export type Team = {
   leaderId: string;
   members: {
     userId: string;
-    role: "leader" | "member";
+    role: Role;
     joinedAt: string;
   }[];
   createdAt: string;
