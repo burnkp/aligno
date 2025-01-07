@@ -1,15 +1,33 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, DatabaseReader } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
+import logger from "@/utils/logger";
 
 // Define the super admin email constant
 const SUPER_ADMIN_EMAIL = "kushtrim@promnestria.biz";
 
+// Helper functions
+function validateEmail(email: string): boolean {
+  return email.toLowerCase() === email && email.includes("@");
+}
+
+function checkSuperAdmin(email: string): boolean {
+  return email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+}
+
 export const getUser = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
     // Return null for empty userId
     if (!args.userId) return null;
+
+    // Log the user lookup attempt
+    logger.info("Looking up user", { userId: args.userId });
 
     // Check for existing user
     const user = await ctx.db
@@ -25,7 +43,16 @@ export const ensureSuperAdmin = mutation({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity || identity.email !== SUPER_ADMIN_EMAIL) {
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Validate super admin email
+    if (!identity.email || identity.email.toLowerCase() !== SUPER_ADMIN_EMAIL.toLowerCase()) {
+      logger.warn("Unauthorized super admin access attempt", {
+        email: identity.email,
+        userId: args.userId
+      });
       return null;
     }
 
@@ -36,19 +63,30 @@ export const ensureSuperAdmin = mutation({
       .first();
 
     if (existingUser) {
+      // Update existing super admin if needed
+      if (existingUser.role !== "super_admin") {
+        await ctx.db.patch(existingUser._id, {
+          role: "super_admin" as const,
+          organizationId: "SYSTEM" as const,
+          updatedAt: new Date().toISOString()
+        });
+      }
       return existingUser._id;
     }
 
     // Create super admin user
-    return await ctx.db.insert("users", {
+    const userId = await ctx.db.insert("users", {
       userId: args.userId,
-      email: SUPER_ADMIN_EMAIL,
+      email: SUPER_ADMIN_EMAIL.toLowerCase(),
       name: "Kushtrim Puka",
       role: "super_admin" as const,
       organizationId: "SYSTEM" as const,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
+
+    logger.info("Super admin user created", { userId });
+    return userId;
   },
 });
 
@@ -61,6 +99,19 @@ export const createUser = mutation({
     organizationId: v.union(v.literal("SYSTEM"), v.id("organizations")),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Validate email format
+    if (!validateEmail(args.email)) {
+      throw new Error("Invalid email format");
+    }
+
+    // Normalize email to lowercase
+    const normalizedEmail = args.email.toLowerCase();
+
     // Check if user already exists
     const existingUser = await ctx.db
       .query("users")
@@ -71,22 +122,57 @@ export const createUser = mutation({
       return existingUser._id;
     }
 
-    // Create new user
-    return await ctx.db.insert("users", {
+    // Handle super admin creation
+    if (normalizedEmail === SUPER_ADMIN_EMAIL.toLowerCase()) {
+      if (identity.email !== SUPER_ADMIN_EMAIL) {
+        throw new Error("Unauthorized super admin creation attempt");
+      }
+      return await ctx.db.insert("users", {
+        userId: args.userId,
+        email: SUPER_ADMIN_EMAIL.toLowerCase(),
+        name: "Kushtrim Puka",
+        role: "super_admin" as const,
+        organizationId: "SYSTEM" as const,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    // Create regular user
+    const userId = await ctx.db.insert("users", {
       userId: args.userId,
-      email: args.email,
+      email: normalizedEmail,
       name: args.name,
-      role: args.email === SUPER_ADMIN_EMAIL ? "super_admin" : args.role,
-      organizationId: args.email === SUPER_ADMIN_EMAIL ? "SYSTEM" : args.organizationId,
+      role: args.role,
+      organizationId: args.organizationId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
+
+    logger.info("User created", {
+      userId,
+      role: args.role,
+      organizationId: args.organizationId
+    });
+
+    return userId;
   },
 });
 
 export const getAllUsers = query({
   args: {},
   handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Only super admin can get all users
+    const isSuperAdminUser = checkSuperAdmin(identity.email ?? "");
+    if (!isSuperAdminUser) {
+      throw new Error("Not authorized to view all users");
+    }
+
     const users = await ctx.db.query("users").collect();
     return users;
   },
@@ -114,12 +200,8 @@ export const updateUser = mutation({
     }
 
     // Only super admin can update users
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("userId", identity.subject))
-      .first();
-
-    if (!currentUser || currentUser.role !== "super_admin") {
+    const isSuperAdminUser = checkSuperAdmin(identity.email ?? "");
+    if (!isSuperAdminUser) {
       throw new Error("Only super admin can update users");
     }
 
@@ -133,8 +215,17 @@ export const updateUser = mutation({
       throw new Error("User not found");
     }
 
-    // If email is being updated, check for uniqueness
+    // Prevent modifying super admin role
+    if (user.email === SUPER_ADMIN_EMAIL && args.updates.role && args.updates.role !== "super_admin") {
+      throw new Error("Cannot modify super admin role");
+    }
+
+    // If email is being updated, check for uniqueness and validate format
     if (args.updates.email !== undefined) {
+      if (!validateEmail(args.updates.email)) {
+        throw new Error("Invalid email format");
+      }
+
       const newEmail = args.updates.email.toLowerCase();
       const existingUser = await ctx.db
         .query("users")
@@ -155,6 +246,48 @@ export const updateUser = mutation({
       updatedAt: new Date().toISOString(),
     });
 
+    logger.info("User updated", {
+      userId: args.userId,
+      updates: args.updates
+    });
+
     return true;
+  },
+});
+
+// Get organization users
+export const getOrganizationUsers = query({
+  args: { organizationId: v.id("organizations") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Get the requesting user
+    const requestingUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("userId", identity.subject))
+      .first();
+
+    if (!requestingUser) {
+      throw new Error("User not found");
+    }
+
+    // Check if user has access to this organization
+    const isSuperAdmin = checkSuperAdmin(identity.email ?? "");
+    const hasAccess = isSuperAdmin || requestingUser.organizationId === args.organizationId;
+
+    if (!hasAccess) {
+      throw new Error("Not authorized to view organization users");
+    }
+
+    // Get all users in the organization
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_organization", (q) => q.eq("organizationId", args.organizationId))
+      .collect();
+
+    return users;
   },
 }); 

@@ -1,31 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import logger from "@/utils/logger";
-
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -33,14 +20,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const formSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  role: z.enum(["member", "leader"]),
-});
-
-type FormSchemaType = z.infer<typeof formSchema>;
+import { useToast } from "@/components/ui/use-toast";
+import logger from "@/utils/logger";
+import { useUser } from "@clerk/nextjs";
 
 interface InviteMemberModalProps {
   isOpen: boolean;
@@ -48,42 +30,42 @@ interface InviteMemberModalProps {
   teamId: Id<"teams">;
 }
 
+type InvitationRole = "org_admin" | "team_leader" | "team_member";
+
 export function InviteMemberModal({ isOpen, onClose, teamId }: InviteMemberModalProps) {
-  const { toast } = useToast();
+  const { user } = useUser();
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [role, setRole] = useState<InvitationRole>("team_member");
   const [isLoading, setIsLoading] = useState(false);
 
-  const createInvitation = useMutation(api.invitations.createInvitation);
+  const createInvitation = useMutation(api.teams.createInvitation);
+  const { toast } = useToast();
 
-  const form = useForm<FormSchemaType>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      name: "",
-      role: "member",
-    },
-  });
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setIsLoading(true);
 
-  const handleSubmit = async (values: FormSchemaType) => {
     try {
-      setIsLoading(true);
       await createInvitation({
         teamId,
-        email: values.email,
-        name: values.name,
-        role: values.role,
+        email,
+        name,
+        role,
       });
 
       toast({
         title: "Success",
-        description: "Invitation sent successfully",
+        description: "Team invitation sent successfully",
       });
-      form.reset();
+
       onClose();
     } catch (error) {
-      logger.error(error);
+      logger.error("Failed to send team invitation:", error);
       toast({
         title: "Error",
-        description: "Failed to send invitation",
+        description: "Failed to send team invitation. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -96,76 +78,73 @@ export function InviteMemberModal({ isOpen, onClose, teamId }: InviteMemberModal
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Invite Team Member</DialogTitle>
+          <DialogDescription>
+            Add a new member to your team. They will receive an email invitation.
+          </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="member@example.com"
-                      type="email"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label htmlFor="email" className="text-sm font-medium">
+              Email
+            </label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="member@example.com"
+              required
             />
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="John Doe"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="name" className="text-sm font-medium">
+              Name
+            </label>
+            <Input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="John Doe"
+              required
             />
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a role" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="member">Member</SelectItem>
-                      <SelectItem value="leader">Leader</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={onClose} type="button">
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Sending..." : "Send Invitation"}
-              </Button>
-            </div>
-          </form>
-        </Form>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="role" className="text-sm font-medium">
+              Role
+            </label>
+            <Select
+              value={role}
+              onValueChange={(value) => setRole(value as InvitationRole)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="team_member">Team Member</SelectItem>
+                <SelectItem value="team_leader">Team Leader</SelectItem>
+                <SelectItem value="org_admin">Organization Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex justify-end space-x-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading || !user}>
+              {isLoading ? "Sending..." : "Send Invitation"}
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

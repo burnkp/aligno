@@ -1,30 +1,33 @@
 "use client";
 
-import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { useToast } from "@/components/ui/use-toast";
-import { EditKPIModal } from "./edit-kpi-modal";
 import { Plus } from "lucide-react";
+import { Role } from "@/utils/permissions";
 
 interface TeamKPIsProps {
   teamId: Id<"teams">;
-  userRole: "leader" | "member" | "admin";
+  userRole: Role;
 }
 
 export function TeamKPIs({ teamId, userRole }: TeamKPIsProps) {
-  const kpis = useQuery(api.kpis.getKPIs, { teamId });
-  const [selectedKPI, setSelectedKPI] = useState<any | null>(null);
-  const { toast } = useToast();
+  const allKPIs = useQuery(api.kpis.getKPIs, {});
+  const kpis = allKPIs?.filter(kpi => kpi.teamId === teamId);
 
-  const canEdit = userRole === "leader" || userRole === "admin";
+  const canEdit = userRole === "team_leader" || userRole === "org_admin" || userRole === "super_admin";
 
-  if (!kpis) {
-    return <div>Loading...</div>;
+  if (!kpis || kpis.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <p className="text-muted-foreground">No key performance indicators found for this team.</p>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -49,15 +52,9 @@ export function TeamKPIs({ teamId, userRole }: TeamKPIsProps) {
                     {kpi.description}
                   </p>
                 </div>
-                {canEdit && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectedKPI(kpi)}
-                  >
-                    Update
-                  </Button>
-                )}
+                <div className="text-sm text-muted-foreground">
+                  Current: {kpi.currentValue} / Target: {kpi.targetValue}
+                </div>
               </div>
               <div className="space-y-1">
                 <div className="flex justify-between text-sm">
@@ -66,22 +63,10 @@ export function TeamKPIs({ teamId, userRole }: TeamKPIsProps) {
                 </div>
                 <Progress value={kpi.progress} />
               </div>
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>Current: {kpi.currentValue}</span>
-                <span>Target: {kpi.targetValue}</span>
-              </div>
             </div>
           ))}
         </div>
       </CardContent>
-
-      {selectedKPI && (
-        <EditKPIModal
-          kpi={selectedKPI}
-          isOpen={!!selectedKPI}
-          onClose={() => setSelectedKPI(null)}
-        />
-      )}
     </Card>
   );
 } 

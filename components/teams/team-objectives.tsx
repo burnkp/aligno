@@ -7,23 +7,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Plus } from "lucide-react";
+import { Role } from "@/utils/permissions";
 
 interface TeamObjectivesProps {
   teamId: Id<"teams">;
-  userRole: "leader" | "member" | "admin";
+  userRole: Role;
 }
 
 export function TeamObjectives({ teamId, userRole }: TeamObjectivesProps) {
-  const allObjectives = useQuery(api.strategicObjectives.getStrategicObjectives);
+  const allObjectives = useQuery(api.strategicObjectives.getStrategicObjectives, {});
   const objectives = allObjectives?.filter(obj => obj.teamId === teamId);
 
-  const canEdit = userRole === "leader" || userRole === "admin";
+  const canEdit = userRole === "team_leader" || userRole === "org_admin" || userRole === "super_admin";
 
   if (!objectives || objectives.length === 0) {
     return (
       <Card>
         <CardContent className="p-6">
-          <p className="text-muted-foreground">No objectives found for this team.</p>
+          <p className="text-muted-foreground">No strategic objectives found for this team.</p>
         </CardContent>
       </Card>
     );

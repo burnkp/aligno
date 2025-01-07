@@ -57,7 +57,7 @@ export default defineSchema({
   teams: defineTable({
     name: v.string(),
     description: v.optional(v.string()),
-    organizationId: v.id("organizations"),
+    organizationId: v.optional(v.id("organizations")),
     leaderId: v.string(),
     createdBy: v.string(),
     settings: v.optional(
@@ -72,7 +72,12 @@ export default defineSchema({
         userId: v.string(),
         email: v.string(),
         name: v.string(),
-        role: v.union(v.literal("leader"), v.literal("member"), v.literal("admin")),
+        role: v.union(
+          v.literal("super_admin"),
+          v.literal("org_admin"),
+          v.literal("team_leader"),
+          v.literal("team_member")
+        ),
         joinedAt: v.string(),
       })
     ),
@@ -176,7 +181,11 @@ export default defineSchema({
     teamId: v.id("teams"),
     email: v.string(),
     name: v.string(),
-    role: v.union(v.literal("leader"), v.literal("member")),
+    role: v.union(
+      v.literal("org_admin"),
+      v.literal("team_leader"),
+      v.literal("team_member")
+    ),
     token: v.string(),
     status: v.union(
       v.literal("pending"),

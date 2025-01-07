@@ -15,7 +15,14 @@ export interface Team {
   name: string;
   description?: string;
   createdBy: string;
+  organizationId?: Id<"organizations">;
+  leaderId?: string;
   members: TeamMember[];
   visibility?: "private" | "public";
   allowedDomains?: string[];
+  settings?: {
+    isPrivate: boolean;
+    allowMemberInvites: boolean;
+    requireLeaderApproval: boolean;
+  };
 } 
