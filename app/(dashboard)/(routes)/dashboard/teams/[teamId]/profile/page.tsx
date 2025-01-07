@@ -5,7 +5,7 @@ import { useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getUserRole } from "@/utils/permissions";
+import { getUserRole, canManageTeam } from "@/utils/permissions";
 import { Id } from "@/convex/_generated/dataModel";
 import { Team } from "@/types/teams";
 import { useRouter } from "next/navigation";
@@ -81,7 +81,7 @@ export default function TeamProfilePage({ params }: Props) {
             <p className="text-muted-foreground mt-2">{team.description}</p>
           )}
         </div>
-        {userRole === "admin" && (
+        {userRole && canManageTeam(userRole) && (
           <Button asChild>
             <Link href={`/dashboard/teams/${params.teamId}/settings`}>
               Team Settings
