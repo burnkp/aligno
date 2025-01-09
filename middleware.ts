@@ -34,9 +34,17 @@ export default authMiddleware({
     try {
       const url = new URL(req.url);
       const path = url.pathname;
-      const redirectUrl = url.searchParams.get("redirect_url");
       const email = url.searchParams.get("email");
       const orgName = url.searchParams.get("orgName");
+      const redirectUrl = url.searchParams.get("redirect_url");
+
+      // Helper function to preserve URL parameters
+      const preserveParams = (targetUrl: URL) => {
+        url.searchParams.forEach((value, key) => {
+          targetUrl.searchParams.set(key, value);
+        });
+        return targetUrl;
+      };
 
       // Log authentication attempt
       logger.info("Authentication middleware processing", {
@@ -45,37 +53,51 @@ export default authMiddleware({
         isPublicRoute: auth.isPublicRoute,
         hasRedirect: !!redirectUrl,
         email,
-        orgName
+        orgName,
+        allParams: Object.fromEntries(url.searchParams.entries())
       });
 
-      // Handle auth-callback route specifically
+      // Special handling for auth-callback
       if (path === '/auth-callback') {
-        if (!auth.userId) {
-          logger.warn("Unauthenticated access to auth-callback, redirecting to sign-in");
-          const signInUrl = new URL('/sign-in', req.url);
-          signInUrl.searchParams.set('redirect_url', '/auth-callback');
-          if (email) signInUrl.searchParams.set('email', email);
-          if (orgName) signInUrl.searchParams.set('orgName', orgName);
+        // If we have auth parameters but no userId, redirect to sign-in
+        if (!auth.userId && (email || orgName)) {
+          logger.info("Auth-callback: Redirecting to sign-in with params", {
+            email,
+            orgName
+          });
+          const signInUrl = preserveParams(new URL('/sign-in', req.url));
           return NextResponse.redirect(signInUrl);
         }
-        // If authenticated, let the auth-callback page handle the flow
-        logger.info("Authenticated user accessing auth-callback, proceeding");
+        
+        // If we have userId but no auth parameters, redirect to dashboard
+        if (auth.userId && !email && !orgName) {
+          logger.info("Auth-callback: Authenticated but no params, redirecting to dashboard");
+          return NextResponse.redirect(new URL('/dashboard', req.url));
+        }
+
+        // If we have both userId and auth parameters, proceed with callback
+        if (auth.userId && (email || orgName)) {
+          logger.info("Auth-callback: Proceeding with full context", {
+            userId: auth.userId,
+            email,
+            orgName
+          });
+          return NextResponse.next();
+        }
+
+        // Default case: let the page handle it
         return NextResponse.next();
       }
 
       // Handle unauthenticated access to protected routes
       if (!auth.userId && !auth.isPublicRoute) {
         logger.warn("Unauthenticated access attempt to protected route", { path });
-        const signInUrl = new URL('/sign-in', req.url);
-        signInUrl.searchParams.set('redirect_url', redirectUrl || path);
-        if (email) signInUrl.searchParams.set('email', email);
-        if (orgName) signInUrl.searchParams.set('orgName', orgName);
+        const signInUrl = preserveParams(new URL('/sign-in', req.url));
         return NextResponse.redirect(signInUrl);
       }
 
       // If authenticated, check role-based access
       if (auth.userId) {
-        const userRole = auth.sessionClaims?.role as string || "team_member";
         const userEmail = auth.sessionClaims?.email as string;
         
         // Check super admin routes
@@ -95,9 +117,11 @@ export default authMiddleware({
             path,
             redirectUrl
           });
-          return NextResponse.redirect(
-            new URL(redirectUrl || '/auth-callback', req.url)
-          );
+          // If we have org context, go to auth-callback, otherwise dashboard
+          const targetUrl = email || orgName
+            ? preserveParams(new URL('/auth-callback', req.url))
+            : new URL('/dashboard', req.url);
+          return NextResponse.redirect(targetUrl);
         }
 
         // Handle organization verification
@@ -107,7 +131,8 @@ export default authMiddleware({
             path,
             userId: auth.userId
           });
-          return NextResponse.redirect(new URL('/auth-callback', req.url));
+          const callbackUrl = preserveParams(new URL('/auth-callback', req.url));
+          return NextResponse.redirect(callbackUrl);
         }
       }
 
@@ -130,15 +155,11 @@ export default authMiddleware({
 // Update matcher configuration to be more specific and include all protected paths
 export const config = {
   matcher: [
-    // Match all paths except static files and api routes that don't need auth
     "/((?!.+\\.[\\w]+$|_next|api/send-welcome-email).*)",
-    // Include specific API routes that need auth
     "/api/(.*)",
-    // Explicitly include admin and debug routes
     "/debug/(.*)",
     "/email-debug/(.*)",
     "/admin/(.*)",
-    // Include auth flow routes
     "/auth/(.*)"
   ]
 };

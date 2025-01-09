@@ -12,13 +12,17 @@ export default function SignInPage() {
 
   // Build the complete redirect URL with all necessary parameters
   const completeRedirectUrl = new URL("/auth-callback", window.location.origin);
-  if (email) completeRedirectUrl.searchParams.set("email", email);
-  if (orgName) completeRedirectUrl.searchParams.set("orgName", orgName);
+  
+  // Preserve all search parameters
+  searchParams.forEach((value, key) => {
+    completeRedirectUrl.searchParams.set(key, value);
+  });
 
   logger.info("Sign In Page Loaded", {
     email,
     orgName,
-    redirectUrl: completeRedirectUrl.toString()
+    redirectUrl: completeRedirectUrl.toString(),
+    allParams: Object.fromEntries(searchParams.entries())
   });
 
   return (
