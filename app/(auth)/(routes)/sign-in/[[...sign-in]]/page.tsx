@@ -2,7 +2,6 @@
 
 import { SignIn } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
-import { useEffect } from "react";
 
 export default function SignInPage() {
   const searchParams = useSearchParams();
@@ -22,16 +21,27 @@ export default function SignInPage() {
       <SignIn
         appearance={{
           elements: {
-            rootBox: "mx-auto",
-            card: "bg-white shadow-none",
+            rootBox: "mx-auto w-full max-w-md",
+            card: "bg-white shadow-md rounded-lg p-8",
+            headerTitle: "text-2xl font-bold",
+            headerSubtitle: "text-gray-600",
+            socialButtonsBlockButton: "bg-white border border-gray-300 hover:bg-gray-50",
+            formButtonPrimary: "bg-primary hover:bg-primary/90",
           },
           layout: {
             socialButtonsPlacement: "top",
-            showOptionalFields: false
-          }
+            showOptionalFields: false,
+            logoPlacement: "inside",
+            logoImageUrl: "/logo.png",
+          },
         }}
-        afterSignInUrl={completeRedirectUrl.toString()}
+        redirectUrl={completeRedirectUrl.toString()}
         signUpUrl="/sign-up"
+        path="/sign-in"
+        routing="path"
+        initialValues={{
+          emailAddress: email || "",
+        }}
       />
     </div>
   );

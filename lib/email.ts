@@ -30,7 +30,7 @@ export async function sendWelcomeEmail({
 
   try {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
-    const signInUrl = new URL('/sign-in/sign-in-with-google', baseUrl);
+    const signInUrl = new URL('/sign-in', baseUrl);
     signInUrl.searchParams.set('redirect_url', '/auth-callback');
     signInUrl.searchParams.set('email', email.toLowerCase());
     signInUrl.searchParams.set('orgName', encodeURIComponent(orgName));
