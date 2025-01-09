@@ -8,13 +8,20 @@ import { useEffect, useCallback, useState } from "react";
 import { Loader2 } from "lucide-react";
 import logger from "@/utils/logger";
 
+// Define the user type
+type ConvexUser = {
+  organizationId: string;
+  role: string;
+  email: string;
+};
+
 const SUPER_ADMIN_EMAIL = "kushtrim@promnestria.biz";
 
 export default function AuthCallback() {
   const router = useRouter();
   const { isSignedIn, userId } = useAuth();
   const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
-  const user = useQuery(api.users.getUser, { userId: userId ?? "" });
+  const user = useQuery(api.users.getUser, { userId: userId ?? "" }) as ConvexUser | null;
   const ensureSuperAdmin = useMutation(api.users.ensureSuperAdmin);
   const ensureOrgAdmin = useMutation(api.users.ensureOrgAdmin);
   const [isCreatingOrg, setIsCreatingOrg] = useState(false);
@@ -132,6 +139,22 @@ export default function AuthCallback() {
             orgName
           });
           logger.info("Organization admin creation result", { result });
+          
+          // Wait for the user record to be created
+          let attempts = 0;
+          while (!user && attempts < 10) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            attempts++;
+          }
+
+          if (user) {
+            const redirectUrl = `/admin/organizations/${user.organizationId}/welcome`;
+            logger.info("Redirecting new org admin", { redirectUrl });
+            router.push(redirectUrl);
+          } else {
+            logger.error("Failed to get user record after creation");
+            router.push("/");
+          }
           return;
         }
       }
