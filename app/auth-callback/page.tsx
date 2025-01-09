@@ -73,25 +73,47 @@ export default function AuthCallback() {
         logger.info("Super admin detected");
         if (!user) {
           await ensureSuperAdmin({ userId: userId! });
+          // Wait for user query to update
+          return;
         }
         router.push("/admin/dashboard");
         return;
       }
 
       // Handle new organization admin
-      if (!user && !isCreatingOrg && email && orgName && email.toLowerCase() === userEmail) {
-        logger.info("Creating new organization", {
-          email: userEmail,
-          orgName
-        });
-        setIsCreatingOrg(true);
-        const newUserId = await ensureOrgAdmin({
-          userId: userId!,
-          email: userEmail,
-          orgName
-        });
-        setCreatedUserId(newUserId);
-        return;
+      if (email && orgName && email.toLowerCase() === userEmail) {
+        if (!user && !isCreatingOrg) {
+          logger.info("Creating new organization", {
+            email: userEmail,
+            orgName
+          });
+          setIsCreatingOrg(true);
+          const newUserId = await ensureOrgAdmin({
+            userId: userId!,
+            email: userEmail,
+            orgName
+          });
+          setCreatedUserId(newUserId);
+          // Wait for user query to update
+          return;
+        }
+
+        // If org is being created, wait for user data
+        if (isCreatingOrg && !user) {
+          logger.info("Waiting for user data after org creation");
+          return;
+        }
+
+        // Once we have user data after org creation
+        if (isCreatingOrg && user && createdUserId === user._id) {
+          logger.info("Organization created, redirecting", {
+            organizationId: user.organizationId
+          });
+          router.push(`/admin/organizations/${user.organizationId}/welcome`);
+          setIsCreatingOrg(false);
+          setCreatedUserId(null);
+          return;
+        }
       }
 
       // Handle existing user
@@ -108,22 +130,16 @@ export default function AuthCallback() {
         } else {
           router.push("/teams");
         }
+        return;
       }
 
-      // Handle newly created organization
-      if (isCreatingOrg && user && createdUserId === user._id) {
-        logger.info("Organization created, redirecting", {
-          organizationId: user.organizationId
-        });
-        
-        if (user.organizationId !== "SYSTEM") {
-          router.push(`/admin/organizations/${user.organizationId}/welcome`);
-        } else {
-          router.push("/");
-        }
-        setIsCreatingOrg(false);
-        setCreatedUserId(null);
-      }
+      logger.info("No redirect condition met, waiting for state changes", {
+        hasUser: !!user,
+        isCreatingOrg,
+        createdUserId,
+        email,
+        orgName
+      });
     } catch (error) {
       logger.error("Error in auth callback", {
         error,

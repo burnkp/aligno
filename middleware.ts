@@ -59,33 +59,28 @@ export default authMiddleware({
 
       // Special handling for auth-callback
       if (path === '/auth-callback') {
-        // If we have auth parameters but no userId, redirect to sign-in
-        if (!auth.userId && (email || orgName)) {
-          logger.info("Auth-callback: Redirecting to sign-in with params", {
+        // Always require authentication for auth-callback
+        if (!auth.userId) {
+          logger.info("Auth-callback: Redirecting to sign-in", {
             email,
             orgName
           });
           const signInUrl = preserveParams(new URL('/sign-in', req.url));
           return NextResponse.redirect(signInUrl);
         }
-        
-        // If we have userId but no auth parameters, redirect to dashboard
-        if (auth.userId && !email && !orgName) {
-          logger.info("Auth-callback: Authenticated but no params, redirecting to dashboard");
+
+        // If authenticated but no context, redirect to dashboard
+        if (!email && !orgName) {
+          logger.info("Auth-callback: No context, redirecting to dashboard");
           return NextResponse.redirect(new URL('/dashboard', req.url));
         }
 
-        // If we have both userId and auth parameters, proceed with callback
-        if (auth.userId && (email || orgName)) {
-          logger.info("Auth-callback: Proceeding with full context", {
-            userId: auth.userId,
-            email,
-            orgName
-          });
-          return NextResponse.next();
-        }
-
-        // Default case: let the page handle it
+        // Proceed with callback if we have both auth and context
+        logger.info("Auth-callback: Proceeding with full context", {
+          userId: auth.userId,
+          email,
+          orgName
+        });
         return NextResponse.next();
       }
 
