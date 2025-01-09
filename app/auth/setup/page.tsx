@@ -35,7 +35,7 @@ function SetupContent() {
               Click below to set up your account and access your organization&apos;s dashboard.
             </p>
           </div>
-          <SignInButton mode="modal">
+          <SignInButton mode="modal" redirectUrl={`/auth-callback?email=${encodeURIComponent(email || '')}&orgName=${encodeURIComponent(orgName || '')}`}>
             <Button className="w-full">
               Complete Setup
             </Button>

@@ -2,6 +2,7 @@
 
 import { SignIn } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
+import logger from "@/utils/logger";
 
 export default function SignInPage() {
   const searchParams = useSearchParams();
@@ -15,6 +16,12 @@ export default function SignInPage() {
   const completeRedirectUrl = new URL(finalRedirectUrl, window.location.origin);
   if (email) completeRedirectUrl.searchParams.set("email", email);
   if (orgName) completeRedirectUrl.searchParams.set("orgName", orgName);
+
+  logger.info("Sign In Page Loaded", {
+    email,
+    orgName,
+    redirectUrl: completeRedirectUrl.toString()
+  });
 
   return (
     <div className="h-screen w-full flex items-center justify-center bg-muted/50">

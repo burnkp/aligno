@@ -23,6 +23,7 @@ export default authMiddleware({
     "/",
     "/get-started",
     "/get-started/confirmation",
+    "/auth-callback",
     "/api/send-welcome-email",
     "/sign-in",
     "/sign-up",
@@ -42,8 +43,23 @@ export default authMiddleware({
         path,
         isAuthenticated: !!auth.userId,
         isPublicRoute: auth.isPublicRoute,
-        hasRedirect: !!redirectUrl
+        hasRedirect: !!redirectUrl,
+        email,
+        orgName
       });
+
+      // Handle auth-callback route
+      if (path === '/auth-callback') {
+        if (!auth.userId) {
+          logger.warn("Unauthenticated access to auth-callback");
+          const signInUrl = new URL('/sign-in', req.url);
+          signInUrl.searchParams.set('redirect_url', '/auth-callback');
+          if (email) signInUrl.searchParams.set('email', email);
+          if (orgName) signInUrl.searchParams.set('orgName', orgName);
+          return NextResponse.redirect(signInUrl);
+        }
+        return NextResponse.next();
+      }
 
       // Handle unauthenticated access to protected routes
       if (!auth.userId && !auth.isPublicRoute) {
@@ -79,14 +95,6 @@ export default authMiddleware({
             });
             return NextResponse.redirect(new URL('/dashboard', req.url));
           }
-        }
-
-        // Handle onboarding flow
-        if (redirectUrl === '/auth-callback' && email && orgName) {
-          const callbackUrl = new URL('/auth-callback', req.url);
-          callbackUrl.searchParams.set('email', email);
-          callbackUrl.searchParams.set('orgName', decodeURIComponent(orgName));
-          return NextResponse.redirect(callbackUrl);
         }
 
         // Handle authenticated users on auth pages
