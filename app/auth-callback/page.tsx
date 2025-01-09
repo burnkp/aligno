@@ -19,6 +19,17 @@ export default function AuthCallback() {
   const ensureOrgAdmin = useMutation(api.users.ensureOrgAdmin);
   const [isCreatingOrg, setIsCreatingOrg] = useState(false);
 
+  useEffect(() => {
+    // If we have a user after org creation, redirect to their dashboard
+    if (isCreatingOrg && user) {
+      logger.info("Organization created, redirecting to welcome page", {
+        organizationId: user.organizationId
+      });
+      router.push(`/admin/organizations/${user.organizationId}/welcome`);
+      setIsCreatingOrg(false);
+    }
+  }, [isCreatingOrg, user, router]);
+
   const handleRedirect = useCallback(async () => {
     if (!isSignedIn || !isUserLoaded || !clerkUser) {
       logger.warn("Missing required auth data");
@@ -31,7 +42,8 @@ export default function AuthCallback() {
       isUserLoaded,
       userId,
       userEmail,
-      convexUser: user
+      convexUser: user,
+      isCreatingOrg
     });
 
     try {
@@ -65,16 +77,17 @@ export default function AuthCallback() {
             email: userEmail,
             orgName
           });
+          // Don't redirect here, let the useEffect handle it when user is created
           return;
         }
       }
 
-      // For existing users or after org creation
-      if (user) {
+      // For existing users
+      if (user && !isCreatingOrg) {
         switch (user.role) {
           case "org_admin":
             logger.info("Redirecting org admin to organization", { organizationId: user.organizationId });
-            router.push(`/organizations/${user.organizationId}`);
+            router.push(`/admin/organizations/${user.organizationId}/welcome`);
             break;
           case "team_leader":
           case "team_member":
@@ -83,11 +96,10 @@ export default function AuthCallback() {
           default:
             router.push("/");
         }
-      } else if (!isCreatingOrg) {
-        router.push("/");
       }
     } catch (error) {
       logger.error("Error in auth callback:", error);
+      setIsCreatingOrg(false);
       router.push("/");
     }
   }, [isSignedIn, isUserLoaded, clerkUser, userId, user, router, ensureSuperAdmin, ensureOrgAdmin, isCreatingOrg]);
