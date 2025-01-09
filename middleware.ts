@@ -48,16 +48,18 @@ export default authMiddleware({
         orgName
       });
 
-      // Handle auth-callback route
+      // Handle auth-callback route specifically
       if (path === '/auth-callback') {
         if (!auth.userId) {
-          logger.warn("Unauthenticated access to auth-callback");
+          logger.warn("Unauthenticated access to auth-callback, redirecting to sign-in");
           const signInUrl = new URL('/sign-in', req.url);
           signInUrl.searchParams.set('redirect_url', '/auth-callback');
           if (email) signInUrl.searchParams.set('email', email);
           if (orgName) signInUrl.searchParams.set('orgName', orgName);
           return NextResponse.redirect(signInUrl);
         }
+        // If authenticated, let the auth-callback page handle the flow
+        logger.info("Authenticated user accessing auth-callback, proceeding");
         return NextResponse.next();
       }
 
@@ -74,24 +76,14 @@ export default authMiddleware({
       // If authenticated, check role-based access
       if (auth.userId) {
         const userRole = auth.sessionClaims?.role as string || "team_member";
+        const userEmail = auth.sessionClaims?.email as string;
         
         // Check super admin routes
-        if (ROLE_PROTECTED_ROUTES.SUPER_ADMIN.some(route => path.startsWith(route))) {
-          if (userRole !== "super_admin") {
-            logger.warn("Unauthorized access attempt to super admin route", {
-              path,
-              userRole
-            });
-            return NextResponse.redirect(new URL('/dashboard', req.url));
-          }
-        }
-
-        // Check admin routes
-        if (ROLE_PROTECTED_ROUTES.ADMIN.some(route => path.startsWith(route))) {
-          if (!["super_admin", "admin"].includes(userRole)) {
+        if (path.startsWith("/admin")) {
+          if (userEmail !== "kushtrim@promnestria.biz") {
             logger.warn("Unauthorized access attempt to admin route", {
               path,
-              userRole
+              userEmail
             });
             return NextResponse.redirect(new URL('/dashboard', req.url));
           }
@@ -104,13 +96,13 @@ export default authMiddleware({
             redirectUrl
           });
           return NextResponse.redirect(
-            new URL(redirectUrl || '/dashboard', req.url)
+            new URL(redirectUrl || '/auth-callback', req.url)
           );
         }
 
         // Handle organization verification
         const hasOrg = auth.sessionClaims?.org_id;
-        if (!hasOrg && !CONDITIONAL_REDIRECTS.ONBOARDING.includes(path)) {
+        if (!hasOrg && !path.startsWith('/auth/') && path !== '/auth-callback') {
           logger.warn("User without organization accessing protected route", {
             path,
             userId: auth.userId
@@ -119,7 +111,6 @@ export default authMiddleware({
         }
       }
 
-      // Log successful middleware processing
       logger.info("Middleware processing completed", {
         path,
         status: "success"
@@ -127,13 +118,10 @@ export default authMiddleware({
 
       return NextResponse.next();
     } catch (error) {
-      // Log any unexpected errors
       logger.error("Middleware error", {
         error: error instanceof Error ? error.message : "Unknown error",
         path: new URL(req.url).pathname
       });
-
-      // Safely redirect to error page or dashboard
       return NextResponse.redirect(new URL('/error', req.url));
     }
   }

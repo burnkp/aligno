@@ -8,12 +8,10 @@ export default function SignInPage() {
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
   const orgName = searchParams.get("orgName");
+  const redirectUrl = searchParams.get("redirect_url");
 
-  // Always redirect to auth-callback after sign-in
-  const finalRedirectUrl = "/auth-callback";
-
-  // Construct the complete redirect URL with all parameters
-  const completeRedirectUrl = new URL(finalRedirectUrl, window.location.origin);
+  // Build the complete redirect URL with all necessary parameters
+  const completeRedirectUrl = new URL("/auth-callback", window.location.origin);
   if (email) completeRedirectUrl.searchParams.set("email", email);
   if (orgName) completeRedirectUrl.searchParams.set("orgName", orgName);
 
