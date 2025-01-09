@@ -299,45 +299,63 @@ export const ensureOrgAdmin = mutation({
     orgName: v.string(),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Validate email format and match
+    if (!validateEmail(args.email) || identity.email?.toLowerCase() !== args.email.toLowerCase()) {
+      throw new Error("Invalid or mismatched email");
+    }
+
     // Check if user already exists
     const existingUser = await ctx.db
       .query("users")
-      .filter(q => q.eq(q.field("userId"), args.userId))
+      .withIndex("by_clerk_id", (q) => q.eq("userId", args.userId))
       .first();
 
     if (existingUser) {
-      return existingUser;
+      return existingUser._id;
     }
 
-    // Create organization
+    const userName = identity.firstName ? String(identity.firstName) : "Unknown";
+
+    // Create the organization first
     const orgId = await ctx.db.insert("organizations", {
       name: args.orgName,
-      contactPerson: {
-        name: args.email.split("@")[0],
-        email: args.email,
-      },
       status: "active",
-      subscription: {
-        plan: "basic",
-        status: "trial",
-        startDate: new Date().toISOString(),
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days trial
-      },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      subscription: {
+        plan: "free",
+        status: "active",
+        startDate: new Date().toISOString(),
+        endDate: undefined,
+      },
+      contactPerson: {
+        name: userName,
+        email: args.email.toLowerCase(),
+      },
     });
 
-    // Create user with org_admin role
+    // Create the user as org_admin
     const userId = await ctx.db.insert("users", {
       userId: args.userId,
-      email: args.email,
-      name: args.email.split("@")[0], // Default name from email
-      role: "org_admin",
+      email: args.email.toLowerCase(),
+      name: userName,
+      role: "org_admin" as const,
       organizationId: orgId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
 
-    return await ctx.db.get(userId);
+    logger.info("Organization admin created", {
+      userId,
+      orgId,
+      orgName: args.orgName
+    });
+
+    return userId;
   },
 }); 
