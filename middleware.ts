@@ -82,11 +82,11 @@ export default authMiddleware({
         }
 
         // Handle onboarding flow
-        if (redirectUrl === '/auth/setup' && email && orgName) {
-          const setupUrl = new URL('/auth/setup', req.url);
-          setupUrl.searchParams.set('email', email);
-          setupUrl.searchParams.set('orgName', decodeURIComponent(orgName));
-          return NextResponse.redirect(setupUrl);
+        if (redirectUrl === '/auth-callback' && email && orgName) {
+          const callbackUrl = new URL('/auth-callback', req.url);
+          callbackUrl.searchParams.set('email', email);
+          callbackUrl.searchParams.set('orgName', decodeURIComponent(orgName));
+          return NextResponse.redirect(callbackUrl);
         }
 
         // Handle authenticated users on auth pages
@@ -107,7 +107,7 @@ export default authMiddleware({
             path,
             userId: auth.userId
           });
-          return NextResponse.redirect(new URL('/auth/setup', req.url));
+          return NextResponse.redirect(new URL('/auth-callback', req.url));
         }
       }
 

@@ -290,4 +290,54 @@ export const getOrganizationUsers = query({
 
     return users;
   },
+});
+
+export const ensureOrgAdmin = mutation({
+  args: {
+    userId: v.string(),
+    email: v.string(),
+    orgName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Check if user already exists
+    const existingUser = await ctx.db
+      .query("users")
+      .filter(q => q.eq(q.field("userId"), args.userId))
+      .first();
+
+    if (existingUser) {
+      return existingUser;
+    }
+
+    // Create organization
+    const orgId = await ctx.db.insert("organizations", {
+      name: args.orgName,
+      contactPerson: {
+        name: args.email.split("@")[0],
+        email: args.email,
+      },
+      status: "active",
+      subscription: {
+        plan: "basic",
+        status: "trial",
+        startDate: new Date().toISOString(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days trial
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    // Create user with org_admin role
+    const userId = await ctx.db.insert("users", {
+      userId: args.userId,
+      email: args.email,
+      name: args.email.split("@")[0], // Default name from email
+      role: "org_admin",
+      organizationId: orgId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    return await ctx.db.get(userId);
+  },
 }); 

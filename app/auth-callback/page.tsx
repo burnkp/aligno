@@ -16,6 +16,7 @@ export default function AuthCallback() {
   const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
   const user = useQuery(api.users.getUser, { userId: userId ?? "" });
   const ensureSuperAdmin = useMutation(api.users.ensureSuperAdmin);
+  const ensureOrgAdmin = useMutation(api.users.ensureOrgAdmin);
 
   const handleRedirect = useCallback(async () => {
     if (!isSignedIn || !isUserLoaded || !clerkUser) {
@@ -45,8 +46,27 @@ export default function AuthCallback() {
         return;
       }
 
-      // For other users
-      logger.info("Regular user detected:", { user });
+      // For new organization admins
+      if (!user) {
+        logger.info("New organization admin detected");
+        const searchParams = new URLSearchParams(window.location.search);
+        const orgName = searchParams.get("orgName");
+        const email = searchParams.get("email");
+
+        if (orgName && email && email.toLowerCase() === userEmail?.toLowerCase()) {
+          logger.info("Creating organization admin record");
+          await ensureOrgAdmin({
+            userId: userId!,
+            email: userEmail,
+            orgName
+          });
+          // Redirect to organization dashboard
+          router.push("/dashboard");
+          return;
+        }
+      }
+
+      // For existing users
       if (user) {
         switch (user.role) {
           case "org_admin":
@@ -66,7 +86,7 @@ export default function AuthCallback() {
       logger.error("Error in auth callback:", error);
       router.push("/");
     }
-  }, [isSignedIn, isUserLoaded, clerkUser, userId, user, router, ensureSuperAdmin]);
+  }, [isSignedIn, isUserLoaded, clerkUser, userId, user, router, ensureSuperAdmin, ensureOrgAdmin]);
 
   useEffect(() => {
     handleRedirect();
