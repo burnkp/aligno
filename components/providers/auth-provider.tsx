@@ -5,6 +5,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { LoadingState } from "@/components/ui/loading-state";
 import logger from "@/utils/logger";
 import { AuthErrorBoundary } from "./auth-error-boundary";
+import { useRouter } from "next/navigation";
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -33,6 +34,8 @@ const AuthState = ({ children }: AuthStateProps) => {
 };
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
+  const router = useRouter();
+
   useEffect(() => {
     logger.info("Initializing AuthProvider");
     validateEnvironmentVariables();
@@ -75,7 +78,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }}
       isSatellite={false}
       navigate={(to) => {
-        window.location.href = to;
+        router.push(to);
       }}
     >
       <AuthErrorBoundary>
