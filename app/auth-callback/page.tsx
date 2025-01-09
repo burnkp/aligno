@@ -4,7 +4,7 @@ import { useAuth, useUser } from "@clerk/nextjs";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { Loader2 } from "lucide-react";
 import logger from "@/utils/logger";
 
@@ -17,6 +17,7 @@ export default function AuthCallback() {
   const user = useQuery(api.users.getUser, { userId: userId ?? "" });
   const ensureSuperAdmin = useMutation(api.users.ensureSuperAdmin);
   const ensureOrgAdmin = useMutation(api.users.ensureOrgAdmin);
+  const [isCreatingOrg, setIsCreatingOrg] = useState(false);
 
   const handleRedirect = useCallback(async () => {
     if (!isSignedIn || !isUserLoaded || !clerkUser) {
@@ -40,6 +41,9 @@ export default function AuthCallback() {
         if (!user) {
           logger.info("Creating super admin record");
           await ensureSuperAdmin({ userId: userId! });
+          // Redirect after creating super admin
+          router.push("/admin/dashboard");
+          return;
         }
         logger.info("Redirecting to admin dashboard");
         router.push("/admin/dashboard");
@@ -47,7 +51,7 @@ export default function AuthCallback() {
       }
 
       // For new organization admins
-      if (!user) {
+      if (!user && !isCreatingOrg) {
         logger.info("New organization admin detected");
         const searchParams = new URLSearchParams(window.location.search);
         const orgName = searchParams.get("orgName");
@@ -55,21 +59,21 @@ export default function AuthCallback() {
 
         if (orgName && email && email.toLowerCase() === userEmail?.toLowerCase()) {
           logger.info("Creating organization admin record");
+          setIsCreatingOrg(true);
           await ensureOrgAdmin({
             userId: userId!,
             email: userEmail,
             orgName
           });
-          // Redirect to organization dashboard
-          router.push("/dashboard");
           return;
         }
       }
 
-      // For existing users
+      // For existing users or after org creation
       if (user) {
         switch (user.role) {
           case "org_admin":
+            logger.info("Redirecting org admin to organization", { organizationId: user.organizationId });
             router.push(`/organizations/${user.organizationId}`);
             break;
           case "team_leader":
@@ -79,14 +83,14 @@ export default function AuthCallback() {
           default:
             router.push("/");
         }
-      } else {
+      } else if (!isCreatingOrg) {
         router.push("/");
       }
     } catch (error) {
       logger.error("Error in auth callback:", error);
       router.push("/");
     }
-  }, [isSignedIn, isUserLoaded, clerkUser, userId, user, router, ensureSuperAdmin, ensureOrgAdmin]);
+  }, [isSignedIn, isUserLoaded, clerkUser, userId, user, router, ensureSuperAdmin, ensureOrgAdmin, isCreatingOrg]);
 
   useEffect(() => {
     handleRedirect();
