@@ -4,8 +4,8 @@ import { checkPermission, isSuperAdmin, logAuditEvent } from "./lib/permissions"
 import logger from "./lib/logger";
 
 /**
- * Create a new organization
- * Only super_admin can create organizations
+ * Create a new organization through the admin dashboard
+ * Only super_admin can use this mutation
  */
 export const createOrganization = mutation({
   args: {
@@ -189,6 +189,10 @@ export const getOrganization = query({
   },
 });
 
+/**
+ * Create a new organization through self-service
+ * This mutation is public and doesn't require authentication
+ */
 export const create = mutation({
   args: {
     name: v.string(),
@@ -198,41 +202,64 @@ export const create = mutation({
   async handler(ctx, args) {
     const { name, adminEmail, adminName } = args;
     
-    // Create organization with required fields
-    const organizationId = await ctx.db.insert("organizations", {
-      name,
-      status: "active",
-      contactPerson: {
-        name: adminName,
+    try {
+      // Create organization with required fields
+      const organizationId = await ctx.db.insert("organizations", {
+        name,
+        status: "active",
+        contactPerson: {
+          name: adminName,
+          email: adminEmail.toLowerCase(),
+        },
+        subscription: {
+          status: "trial",
+          plan: "starter",
+          startDate: new Date().toISOString()
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+
+      // Create pending admin user
+      const userId = await ctx.db.insert("users", {
+        userId: "pending", // Will be updated when user authenticates
         email: adminEmail.toLowerCase(),
-      },
-      subscription: {
-        status: "trial",
-        plan: "starter",
-        startDate: new Date().toISOString()
-      },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    });
+        name: adminName,
+        role: "org_admin",
+        organizationId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
 
-    // Create pending admin user
-    const userId = await ctx.db.insert("users", {
-      userId: "pending", // Will be updated when user authenticates
-      email: adminEmail.toLowerCase(),
-      name: adminName,
-      role: "org_admin",
-      organizationId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    });
+      // Log the action
+      await logAuditEvent(ctx.db, {
+        userId: "SYSTEM",
+        action: "create",
+        resource: "organization",
+        details: { 
+          organizationId, 
+          name,
+          adminEmail: adminEmail.toLowerCase(),
+          source: "self_service"
+        },
+        organizationId
+      });
 
-    logger.info("Organization and admin user created", {
-      organizationId,
-      name,
-      adminEmail,
-      userId
-    });
+      logger.info("Organization and admin user created via self-service", {
+        organizationId,
+        name,
+        adminEmail: adminEmail.toLowerCase(),
+        userId
+      });
     
-    return { organizationId, userId };
+      return { organizationId, userId };
+    } catch (error) {
+      logger.error("Failed to create organization via self-service", {
+        error: error instanceof Error ? error.message : "Unknown error",
+        name,
+        adminEmail: adminEmail.toLowerCase()
+      });
+      throw error;
+    }
   }
 }); 

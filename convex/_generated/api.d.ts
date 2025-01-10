@@ -17,6 +17,7 @@ import type * as analytics from "../analytics.js";
 import type * as auditLogs from "../auditLogs.js";
 import type * as debug from "../debug.js";
 import type * as email from "../email.js";
+import type * as http from "../http.js";
 import type * as init from "../init.js";
 import type * as invitations from "../invitations.js";
 import type * as kpis from "../kpis.js";
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   auditLogs: typeof auditLogs;
   debug: typeof debug;
   email: typeof email;
+  http: typeof http;
   init: typeof init;
   invitations: typeof invitations;
   kpis: typeof kpis;

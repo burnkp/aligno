@@ -24,15 +24,14 @@ export default defineSchema({
         v.literal("active"),
         v.literal("inactive"),
         v.literal("trial"),
-        v.literal("expired"),
-        v.literal("pending")
+        v.literal("expired")
       ),
       startDate: v.string(),
       endDate: v.optional(v.string()),
     }),
     createdAt: v.string(),
     updatedAt: v.string(),
-  }).index("by_status", ["status"]),
+  }),
 
   // Users table - Stores user data with role and organization mapping
   users: defineTable({
