@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import { EditUserModal } from "@/components/admin/edit-user-modal";
+import { OrganizationId } from "@/types";
 
 export default function UserDetailsPage() {
   const params = useParams();
@@ -29,7 +31,9 @@ export default function UserDetailsPage() {
   const user = useQuery(api.users.getUser, { userId });
   const organizations = useQuery(api.organizations.getAllOrganizations);
 
-  const getOrganizationName = (organizationId: string) => {
+  const getOrganizationName = (organizationId: OrganizationId) => {
+    if (organizationId === "SYSTEM") return "System";
+    if (!organizationId) return "N/A";
     const organization = organizations?.find((org) => org._id === organizationId);
     return organization?.name ?? "N/A";
   };

@@ -15,9 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import { Id } from "@convex/_generated/dataModel";
+import { Id } from "@/convex/_generated/dataModel";
 import logger from "@/utils/logger";
 import { Role } from "@/utils/permissions";
+import { OrganizationId } from "@/types";
 
 interface EditUserModalProps {
   isOpen: boolean;
@@ -27,7 +28,7 @@ interface EditUserModalProps {
     name: string;
     email: string;
     role: string;
-    organizationId: string;
+    organizationId: OrganizationId;
   };
 }
 
@@ -35,7 +36,7 @@ interface FormData {
   name: string;
   email: string;
   role: Role;
-  organizationId: string;
+  organizationId: OrganizationId;
 }
 
 export const EditUserModal = ({
@@ -151,15 +152,19 @@ export const EditUserModal = ({
           <div className="space-y-2">
             <Label htmlFor="organization">Organization</Label>
             <Select
-              value={formData.organizationId}
+              value={formData.organizationId === null ? undefined : formData.organizationId}
               onValueChange={(value) =>
-                setFormData({ ...formData, organizationId: value })
+                setFormData({
+                  ...formData,
+                  organizationId: value === "SYSTEM" ? "SYSTEM" : (value as Id<"organizations">)
+                })
               }
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select organization" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="SYSTEM">System</SelectItem>
                 {organizations?.map((org) => (
                   <SelectItem key={org._id} value={org._id}>
                     {org.name}
