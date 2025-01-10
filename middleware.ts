@@ -26,11 +26,6 @@ export default authMiddleware({
         isPublicRoute: auth.isPublicRoute
       });
 
-      // Allow webhook endpoint
-      if (path === '/api/clerk-webhooks') {
-        return NextResponse.next();
-      }
-
       // Handle unauthenticated access to protected routes
       if (!auth.userId && !auth.isPublicRoute) {
         logger.warn("Unauthenticated access attempt", { path });
@@ -70,9 +65,6 @@ export default authMiddleware({
 
 export const config = {
   matcher: [
-    "/((?!.+\\.[\\w]+$|_next).*)",
-    "/",
-    "/(api|trpc)(.*)",
-    "!/api/clerk-webhooks"
+    "/((?!api/clerk-webhooks|_next/static|_next/image|favicon.ico).*)",
   ]
 };
