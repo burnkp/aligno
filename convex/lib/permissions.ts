@@ -178,8 +178,8 @@ export async function getAllowedTeamIds(
   // If user is org_admin, also get all teams in their organization
   if (user.role === "org_admin" && user.organizationId !== "SYSTEM") {
     // Type guard to ensure organizationId is a valid Id<"organizations">
-    const isValidOrgId = (id: string | Id<"organizations">): id is Id<"organizations"> => 
-      id !== "SYSTEM";
+    const isValidOrgId = (id: string | Id<"organizations"> | null): id is Id<"organizations"> => 
+      id !== "SYSTEM" && id !== null;
 
     if (isValidOrgId(user.organizationId)) {
       // Store the valid organization ID to maintain type safety
