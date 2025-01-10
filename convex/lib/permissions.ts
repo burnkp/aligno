@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { DatabaseReader, DatabaseWriter, QueryCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
 import { Role } from "@/utils/permissions";
+import { OrganizationId } from "@/types";
 
 export type PermissionAction = "create" | "read" | "update" | "delete" | "manage";
 export type Resource = "organization" | "team" | "user" | "task" | "analytics";
@@ -32,7 +33,12 @@ export async function isUserInOrganization(
     .query("users")
     .withIndex("by_clerk_id", (q) => q.eq("userId", userId))
     .first();
-  return user?.organizationId === organizationId;
+  
+  if (!user || user.organizationId === undefined) {
+    return false;
+  }
+  
+  return user.organizationId === organizationId;
 }
 
 /**
@@ -178,8 +184,8 @@ export async function getAllowedTeamIds(
   // If user is org_admin, also get all teams in their organization
   if (user.role === "org_admin" && user.organizationId !== "SYSTEM") {
     // Type guard to ensure organizationId is a valid Id<"organizations">
-    const isValidOrgId = (id: string | Id<"organizations"> | null): id is Id<"organizations"> => 
-      id !== "SYSTEM" && id !== null;
+    const isValidOrgId = (id: OrganizationId): id is Id<"organizations"> => 
+      id !== "SYSTEM" && id !== null && id !== undefined;
 
     if (isValidOrgId(user.organizationId)) {
       // Store the valid organization ID to maintain type safety
