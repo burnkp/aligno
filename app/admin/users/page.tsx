@@ -17,6 +17,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { CreateUserModal } from "@/components/admin/create-user-modal";
 import Link from "next/link";
+import { OrganizationId } from "@/types";
 
 export default function UsersPage() {
   const users = useQuery(api.users.getAllUsers);
@@ -30,7 +31,9 @@ export default function UsersPage() {
       user.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const getOrganizationName = (organizationId: string) => {
+  const getOrganizationName = (organizationId: OrganizationId) => {
+    if (organizationId === "SYSTEM") return "System";
+    if (!organizationId) return "N/A";
     const organization = organizations?.find((org) => org._id === organizationId);
     return organization?.name ?? "N/A";
   };
