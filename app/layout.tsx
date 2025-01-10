@@ -1,16 +1,9 @@
-"use client";
-
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { ClerkProvider } from "@clerk/nextjs";
-import { AuthProvider } from "@/components/providers/auth-provider";
-import { ConvexClientProvider } from "@/components/providers/convex-client-provider";
-import { AuthLoading } from "@/components/providers/auth-loading";
-import { Suspense } from "react";
+import { ClientProviders } from "@/components/providers/client-providers";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/react";
-import { AuthErrorBoundary } from "@/components/providers/auth-error-boundary";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -29,17 +22,9 @@ export default function RootLayout({
       <body className={inter.className}>
         <SpeedInsights />
         <Analytics />
-        <ClerkProvider>
-          <ConvexClientProvider>
-            <AuthErrorBoundary>
-              <AuthProvider>
-                <Suspense fallback={<AuthLoading />}>
-                  {children}
-                </Suspense>
-              </AuthProvider>
-            </AuthErrorBoundary>
-          </ConvexClientProvider>
-        </ClerkProvider>
+        <ClientProviders>
+          {children}
+        </ClientProviders>
       </body>
     </html>
   );
