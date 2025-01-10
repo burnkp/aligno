@@ -1,3 +1,5 @@
+"use client";
+
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -28,15 +30,15 @@ export default function RootLayout({
         <SpeedInsights />
         <Analytics />
         <ClerkProvider>
-          <AuthErrorBoundary>
-            <AuthProvider>
-              <Suspense fallback={<AuthLoading />}>
-                <ConvexClientProvider>
+          <ConvexClientProvider>
+            <AuthErrorBoundary>
+              <AuthProvider>
+                <Suspense fallback={<AuthLoading />}>
                   {children}
-                </ConvexClientProvider>
-              </Suspense>
-            </AuthProvider>
-          </AuthErrorBoundary>
+                </Suspense>
+              </AuthProvider>
+            </AuthErrorBoundary>
+          </ConvexClientProvider>
         </ClerkProvider>
       </body>
     </html>
