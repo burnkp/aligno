@@ -63,7 +63,8 @@ export const syncUser = mutation({
           logger.info("Updated pending user with Clerk ID", {
             userId: clerkId,
             email,
-            organizationId: existingUser.organizationId
+            organizationId: existingUser.organizationId,
+            role: existingUser.role
           });
         }
         return existingUser._id;
@@ -130,5 +131,22 @@ export const deleteUser = mutation({
       });
       throw error;
     }
+  },
+});
+
+export const getCurrentUser = query({
+  args: {},
+  async handler(ctx) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("userId", identity.subject))
+      .first();
+
+    return user;
   },
 }); 

@@ -7,6 +7,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useCallback, useState } from "react";
 import { AuthLoading } from "@/components/providers/auth-loading";
 import logger from "@/utils/logger";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
 
 export default function AuthCallback() {
   const router = useRouter();
@@ -21,6 +23,8 @@ export default function AuthCallback() {
 
   const user = useQuery(api.users.getUser, { userId: userId ?? "" });
   const syncUser = useMutation(api.users.syncUser);
+  const updateUserClerkId = useMutation(api.mutations.organizations.updateUserClerkId);
+  const getOrgByEmail = useMutation(api.mutations.organizations.getOrgByEmail);
 
   const handleRedirect = useCallback(async () => {
     if (!isSignedIn || !isUserLoaded || !clerkUser || isProcessing) {
@@ -51,18 +55,37 @@ export default function AuthCallback() {
     try {
       setIsProcessing(true);
 
-      // Sync user data with Clerk
+      // If we have organization context, update the user's Clerk ID
+      if (email && orgName && organizationId) {
+        const result = await updateUserClerkId({
+          email: email.toLowerCase(),
+          clerkId: userId!,
+          orgName
+        });
+
+        logger.info("Updated user Clerk ID with organization context", {
+          email,
+          userId,
+          orgName,
+          organizationId,
+          result
+        });
+
+        // Redirect to organization dashboard
+        router.replace(`/${result.organizationName}`);
+        return;
+      }
+
+      // Otherwise, sync user data with Clerk
       await syncUser({
-        userId: userId!,
+        clerkId: userId!,
         email: userEmail!,
-        name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 'Unknown',
-        imageUrl: clerkUser.imageUrl || undefined
+        name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 'Unknown'
       });
 
       logger.info("User synced successfully", {
         userId,
-        email: userEmail,
-        organizationId
+        email: userEmail
       });
 
       // Redirect based on user state
@@ -72,7 +95,13 @@ export default function AuthCallback() {
             router.replace("/admin/dashboard");
             break;
           case "org_admin":
-            router.replace(`/admin/organizations/${user.organizationId}/welcome`);
+            // Get organization name from the user's email
+            const org = await getOrgByEmail({ email: userEmail! });
+            if (org) {
+              router.replace(`/${org.name}`);
+            } else {
+              router.replace("/sign-in");
+            }
             break;
           case "pending":
             router.replace("/get-started");
@@ -81,11 +110,8 @@ export default function AuthCallback() {
             router.replace("/sign-in");
         }
       } else {
-        // If no user record yet, wait for webhook to process
-        logger.info("Waiting for user record to be created", {
-          userId,
-          email: userEmail
-        });
+        // If no user record yet, redirect to get-started
+        router.replace("/get-started");
       }
     } catch (error) {
       logger.error("Error in auth callback:", error);
@@ -93,13 +119,25 @@ export default function AuthCallback() {
     } finally {
       setIsProcessing(false);
     }
-  }, [isSignedIn, isUserLoaded, clerkUser, userId, user, router, email, orgName, organizationId, syncUser, isProcessing]);
+  }, [isSignedIn, isUserLoaded, clerkUser, user, userId, email, orgName, organizationId, isProcessing, router, syncUser, updateUserClerkId, getOrgByEmail]);
 
   useEffect(() => {
-    if (isClerkLoaded && isUserLoaded) {
-      handleRedirect();
-    }
-  }, [isClerkLoaded, isUserLoaded, handleRedirect]);
+    handleRedirect();
+  }, [handleRedirect]);
 
-  return <AuthLoading />;
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <Card className="w-[90%] max-w-md">
+        <CardHeader>
+          <CardTitle>Setting up your account...</CardTitle>
+          <CardDescription>
+            Please wait while we configure your account.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center py-6">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    </div>
+  );
 }

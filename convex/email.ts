@@ -126,7 +126,7 @@ export const sendWelcomeEmail = mutation({
 
       // Construct the sign-in URL with organization context
       const signInUrl = new URL(appUrl + "/sign-in");
-      signInUrl.searchParams.set("redirect_url", `/auth/callback`);
+      signInUrl.searchParams.set("redirect_url", `/auth-callback`);
       signInUrl.searchParams.set("email", email.toLowerCase());
       signInUrl.searchParams.set("orgName", orgName);
       signInUrl.searchParams.set("organizationId", organizationId);
@@ -136,16 +136,18 @@ export const sendWelcomeEmail = mutation({
         to: email.toLowerCase(),
         subject: `Welcome to ${orgName} on Aligno`,
         html: `
-          <div>
-            <h1>Welcome to ${orgName} on Aligno!</h1>
-            <p>Hi ${name},</p>
-            <p>Your organization has been created successfully. Click the button below to access your dashboard:</p>
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h1 style="color: #0070f3; margin-bottom: 24px;">Welcome to ${orgName} on Aligno!</h1>
+            <p style="margin-bottom: 16px;">Hi ${name},</p>
+            <p style="margin-bottom: 24px;">Your organization has been created successfully. Click the button below to access your dashboard:</p>
             <a href="${signInUrl}" style="display: inline-block; background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 16px 0;">
               Access Your Dashboard
             </a>
-            <p>If the button doesn't work, copy and paste this link into your browser:</p>
-            <p>${signInUrl}</p>
-            <p>Best regards,<br>The Aligno Team</p>
+            <p style="color: #666; margin-top: 24px;">If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="color: #666; word-break: break-all;">${signInUrl}</p>
+            <div style="margin-top: 48px; padding-top: 24px; border-top: 1px solid #eaeaea;">
+              <p style="color: #666;">Best regards,<br>The Aligno Team</p>
+            </div>
           </div>
         `,
       });
@@ -177,5 +179,5 @@ export const sendWelcomeEmail = mutation({
       });
       throw error;
     }
-  },
+  }
 });

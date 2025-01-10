@@ -110,6 +110,27 @@ export const updateUserClerkId = mutation({
     return {
       userId: user._id,
       organizationId: organization._id,
+      organizationName: organization.name
     };
+  },
+});
+
+export const getOrgByEmail = mutation({
+  args: {
+    email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const organization = await ctx.db
+      .query("organizations")
+      .filter((q) => 
+        q.eq(q.field("contactPerson.email"), args.email.toLowerCase())
+      )
+      .first();
+
+    if (!organization) {
+      return null;
+    }
+
+    return organization;
   },
 }); 
