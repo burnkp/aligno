@@ -2,6 +2,9 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import logger from "./lib/logger";
 
+// Super admin email constant
+const SUPER_ADMIN_EMAIL = "kushtrim@promnestria.biz";
+
 export const getUser = query({
   args: { userId: v.string() },
   async handler(ctx, args) {
@@ -10,6 +13,25 @@ export const getUser = query({
       .withIndex("by_clerk_id", (q) => q.eq("userId", args.userId))
       .first();
     return user;
+  },
+});
+
+export const getAllUsers = query({
+  args: {},
+  async handler(ctx) {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    // Only super admin can get all users
+    if (identity.email?.toLowerCase() !== SUPER_ADMIN_EMAIL.toLowerCase()) {
+      throw new Error("Not authorized to view all users");
+    }
+
+    const users = await ctx.db.query("users").collect();
+    logger.info("Retrieved all users", { count: users.length });
+    return users;
   },
 });
 
