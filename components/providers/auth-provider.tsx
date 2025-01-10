@@ -5,8 +5,8 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { Loader2 } from "lucide-react";
 import logger from "@/utils/logger";
+import { AuthLoadingMinimal } from "./auth-loading";
 
 const publicRoutes = ["/", "/get-started", "/sign-in", "/sign-up", "/privacy-policy", "/terms"];
 
@@ -80,26 +80,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Show loading state while checking auth
   if (!isClerkLoaded || !isUserLoaded) {
-    return (
-      <div className="h-screen w-screen flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
+    return <AuthLoadingMinimal />;
   }
 
   // Show loading while waiting for user record
   if (userId && !user && !publicRoutes.some(route => pathname?.startsWith(route))) {
-    return (
-      <div className="h-screen w-screen flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-          <p className="text-sm text-muted-foreground">Setting up your account...</p>
-        </div>
-      </div>
-    );
+    return <AuthLoadingMinimal />;
   }
 
   return <>{children}</>;

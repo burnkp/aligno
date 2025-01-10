@@ -64,8 +64,18 @@ const initializeConvexClient = (
   });
 };
 
-// Initialize the client
-const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL ?? "");
+// Initialize the client outside of the component to avoid re-initialization
+let convex: ConvexReactClient;
+try {
+  if (!process.env.NEXT_PUBLIC_CONVEX_URL) {
+    throw new Error("Missing NEXT_PUBLIC_CONVEX_URL environment variable");
+  }
+  convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL);
+  logger.info("ConvexClientProvider: Static client initialized successfully");
+} catch (error) {
+  logger.error("ConvexClientProvider: Failed to initialize static client:", error);
+  throw error;
+}
 
 export function ConvexClientProvider({ children }: ConvexClientProviderProps) {
   const { isLoaded: isAuthLoaded, isSignedIn } = useAuth();

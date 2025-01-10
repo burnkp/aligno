@@ -40,7 +40,8 @@ export async function POST(req: Request) {
 
     logger.info("Processing webhook event", {
       type: evt.type,
-      userId: evt.data.id
+      userId: evt.data.id,
+      eventId: svix_id
     });
 
     if (evt.type === 'user.created' || evt.type === 'user.updated') {
@@ -55,28 +56,52 @@ export async function POST(req: Request) {
       const email = email_addresses[0]?.email_address?.toLowerCase();
 
       if (!email) {
-        logger.warn("No email found in webhook data", { userId });
+        logger.warn("No email found in webhook data", { 
+          userId,
+          eventId: svix_id,
+          emailAddresses: email_addresses 
+        });
         return new Response('No email found', { status: 400 });
       }
 
-      await convex.mutation(api.users.syncUser, {
-        userId,
-        email,
-        name: `${first_name || ''} ${last_name || ''}`.trim(),
-        imageUrl: image_url || undefined
-      });
+      try {
+        await convex.mutation(api.users.syncUser, {
+          userId,
+          email,
+          name: `${first_name || ''} ${last_name || ''}`.trim() || 'Unknown',
+          imageUrl: image_url || undefined
+        });
 
-      logger.info("User synced successfully", {
-        userId,
-        email,
-        type: evt.type
-      });
+        logger.info("User synced successfully", {
+          userId,
+          email,
+          type: evt.type,
+          eventId: svix_id
+        });
+
+        return new Response('Webhook processed', { status: 200 });
+      } catch (syncError) {
+        logger.error("User sync failed", {
+          error: syncError instanceof Error ? syncError.message : "Unknown error",
+          userId,
+          email,
+          eventId: svix_id
+        });
+        
+        // Return 200 to acknowledge receipt but log the error
+        return new Response('Webhook received but sync failed', { status: 200 });
+      }
     }
 
-    return new Response('Webhook processed', { status: 200 });
+    logger.info("Unhandled webhook event type", {
+      type: evt.type,
+      eventId: svix_id
+    });
+    return new Response('Webhook event type not handled', { status: 200 });
   } catch (err) {
     logger.error("Webhook processing failed", {
-      error: err instanceof Error ? err.message : "Unknown error"
+      error: err instanceof Error ? err.message : "Unknown error",
+      eventId: svix_id
     });
     return new Response('Webhook verification failed', { status: 400 });
   }

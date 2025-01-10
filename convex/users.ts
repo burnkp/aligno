@@ -371,27 +371,62 @@ export const syncUser = mutation({
     const { userId, email, name, imageUrl } = args;
     
     // Check for super admin
-    const isSuperAdmin = email === SUPER_ADMIN_EMAIL;
+    const isSuperAdmin = email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
     
-    // Get existing user
+    // Get existing user by Clerk ID
     const existingUser = await ctx.db
       .query("users")
       .withIndex("by_clerk_id", q => q.eq("userId", userId))
       .first();
       
     if (existingUser) {
-      return await ctx.db.patch(existingUser._id, {
+      logger.info("Updating existing user", {
+        userId,
         email,
+        role: existingUser.role
+      });
+      
+      return await ctx.db.patch(existingUser._id, {
+        email: email.toLowerCase(),
         name,
         imageUrl,
         updatedAt: new Date().toISOString()
       });
     }
     
-    // Create new user with pending state
-    return await ctx.db.insert("users", {
+    // Look for pending user by email
+    const pendingUser = await ctx.db
+      .query("users")
+      .withIndex("by_email", q => q.eq("email", email.toLowerCase()))
+      .filter(q => q.eq(q.field("userId"), "pending"))
+      .first();
+    
+    if (pendingUser) {
+      logger.info("Linking pending user with Clerk ID", {
+        userId,
+        email,
+        organizationId: pendingUser.organizationId
+      });
+      
+      // Update the pending user with the Clerk ID
+      return await ctx.db.patch(pendingUser._id, {
+        userId,
+        name,
+        imageUrl,
+        updatedAt: new Date().toISOString()
+      });
+    }
+    
+    // Create new user with pending state if no existing or pending user found
+    logger.info("Creating new user", {
       userId,
       email,
+      role: isSuperAdmin ? "super_admin" : "pending"
+    });
+    
+    return await ctx.db.insert("users", {
+      userId,
+      email: email.toLowerCase(),
       name,
       imageUrl,
       role: isSuperAdmin ? "super_admin" : "pending",

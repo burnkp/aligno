@@ -4,15 +4,19 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import logger from "@/utils/logger";
 
 export default function GetStarted() {
-  const [email, setEmail] = useState("");
-  const [orgName, setOrgName] = useState("");
+  const [formData, setFormData] = useState({
+    orgName: "",
+    name: "",
+    email: "",
+  });
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
@@ -25,39 +29,55 @@ export default function GetStarted() {
 
     try {
       logger.info("Starting organization creation", {
-        email,
-        orgName
+        email: formData.email,
+        orgName: formData.orgName,
+        name: formData.name
       });
 
-      // Create organization
-      const organizationId = await createOrganization({
-        name: orgName,
-        adminEmail: email.toLowerCase()
+      // Create organization and admin user
+      const result = await createOrganization({
+        name: formData.orgName,
+        adminEmail: formData.email.toLowerCase(),
+        adminName: formData.name
       });
 
       logger.info("Organization created", {
-        organizationId,
-        orgName
+        organizationId: result.organizationId,
+        userId: result.userId,
+        orgName: formData.orgName
       });
 
       // Send welcome email
       await sendWelcomeEmail({
-        email: email.toLowerCase(),
-        orgName,
-        organizationId
+        email: formData.email.toLowerCase(),
+        name: formData.name,
+        orgName: formData.orgName,
+        organizationId: result.organizationId
       });
 
       logger.info("Welcome email sent", {
-        email
+        email: formData.email,
+        organizationId: result.organizationId
       });
 
       // Redirect to confirmation page
-      router.push(`/get-started/confirmation?email=${encodeURIComponent(email)}&orgName=${encodeURIComponent(orgName)}`);
+      router.push(
+        `/get-started/confirmation?${new URLSearchParams({
+          email: formData.email,
+          orgName: formData.orgName,
+          organizationId: result.organizationId
+        }).toString()}`
+      );
+
+      toast({
+        title: "Organization Created",
+        description: "Please check your email to access your organization's dashboard.",
+      });
     } catch (error) {
       logger.error("Organization creation failed", {
         error: error instanceof Error ? error.message : "Unknown error",
-        email,
-        orgName
+        email: formData.email,
+        orgName: formData.orgName
       });
 
       toast({
@@ -71,66 +91,59 @@ export default function GetStarted() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold tracking-tight">Get Started</h1>
-          <p className="mt-2 text-lg text-muted-foreground">
-            Create your organization to begin
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium">
-                Email Address
-              </label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@company.com"
-                className="mt-1"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="orgName" className="block text-sm font-medium">
-                Organization Name
-              </label>
+    <div className="container max-w-lg mx-auto py-10">
+      <Card>
+        <CardHeader>
+          <CardTitle>Create Your Organization</CardTitle>
+          <CardDescription>
+            Enter your details to get started with Aligno.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="orgName">Organization Name</Label>
               <Input
                 id="orgName"
-                name="orgName"
-                type="text"
+                value={formData.orgName}
+                onChange={(e) => setFormData(prev => ({ ...prev, orgName: e.target.value }))}
+                placeholder="Enter organization name"
                 required
-                value={orgName}
-                onChange={(e) => setOrgName(e.target.value)}
-                placeholder="Acme Inc."
-                className="mt-1"
+                disabled={isLoading}
               />
             </div>
-          </div>
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating...
-              </>
-            ) : (
-              "Create Organization"
-            )}
-          </Button>
-        </form>
-      </div>
+            <div className="space-y-2">
+              <Label htmlFor="name">Your Name</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Enter your full name"
+                required
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="Enter your email"
+                required
+                disabled={isLoading}
+              />
+            </div>
+
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Creating Organization..." : "Create Organization"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 } 

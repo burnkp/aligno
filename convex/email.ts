@@ -100,70 +100,71 @@ export const sendInvitation = action({
   },
 });
 
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 export const sendWelcomeEmail = mutation({
   args: {
     email: v.string(),
     orgName: v.string(),
+    name: v.string(),
     organizationId: v.id("organizations")
   },
   async handler(ctx, args) {
-    const { email, orgName, organizationId } = args;
+    const { email, orgName, name, organizationId } = args;
 
     try {
-      logger.info("Sending welcome email", {
-        email,
-        orgName,
-        organizationId
+      // Construct the sign-in URL with organization context
+      const signInUrl = new URL(process.env.NEXT_PUBLIC_APP_URL + "/sign-in");
+      signInUrl.searchParams.set("redirect_url", `/auth/callback`);
+      signInUrl.searchParams.set("email", email.toLowerCase());
+      signInUrl.searchParams.set("orgName", orgName);
+      signInUrl.searchParams.set("organizationId", organizationId);
+
+      const { data, error } = await resend.emails.send({
+        from: "Aligno <no-reply@alignometrix.com>",
+        to: email.toLowerCase(),
+        subject: `Welcome to ${orgName} on Aligno`,
+        html: `
+          <div>
+            <h1>Welcome to ${orgName} on Aligno!</h1>
+            <p>Hi ${name},</p>
+            <p>Your organization has been created successfully. Click the button below to access your dashboard:</p>
+            <a href="${signInUrl}" style="display: inline-block; background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 16px 0;">
+              Access Your Dashboard
+            </a>
+            <p>If the button doesn't work, copy and paste this link into your browser:</p>
+            <p>${signInUrl}</p>
+            <p>Best regards,<br>The Aligno Team</p>
+          </div>
+        `,
       });
 
-      // Log the attempt
-      const logId = await ctx.db.insert("emailLogs", {
-        email,
-        status: "pending",
-        teamId: organizationId,
-        details: `Welcome email for ${orgName}`,
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || "development"
-      });
-
-      // Send email through API route
-      const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-welcome-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      if (error) {
+        logger.error("Failed to send welcome email", {
+          error,
           email,
           orgName,
           organizationId
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to send welcome email: ${response.statusText}`);
+        });
+        throw new Error("Failed to send welcome email");
       }
-
-      // Update log with success
-      await ctx.db.patch(logId, {
-        status: "sent",
-        timestamp: new Date().toISOString()
-      });
 
       logger.info("Welcome email sent successfully", {
         email,
         orgName,
-        logId
+        organizationId,
+        messageId: data?.id
       });
 
-      return logId;
+      return { success: true };
     } catch (error) {
-      logger.error("Failed to send welcome email", {
+      logger.error("Error sending welcome email", {
         error: error instanceof Error ? error.message : "Unknown error",
         email,
-        orgName
+        orgName,
+        organizationId
       });
-
       throw error;
     }
-  }
+  },
 });
