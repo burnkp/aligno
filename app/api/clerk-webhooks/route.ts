@@ -43,21 +43,27 @@ export async function POST(req: Request) {
       userId: evt.data.id
     });
 
-    const { id: userId, email_addresses, ...attributes } = evt.data;
-    const email = email_addresses[0]?.email_address?.toLowerCase();
-
-    if (!email) {
-      logger.warn("No email found in webhook data", { userId });
-      return new Response('No email found', { status: 400 });
-    }
-
-    // Handle user creation/update in Convex
     if (evt.type === 'user.created' || evt.type === 'user.updated') {
+      const { id: userId, email_addresses, first_name, last_name, image_url } = evt.data as {
+        id: string;
+        email_addresses: Array<{ email_address: string }>;
+        first_name: string | null;
+        last_name: string | null;
+        image_url: string | null;
+      };
+
+      const email = email_addresses[0]?.email_address?.toLowerCase();
+
+      if (!email) {
+        logger.warn("No email found in webhook data", { userId });
+        return new Response('No email found', { status: 400 });
+      }
+
       await convex.mutation(api.users.syncUser, {
         userId,
         email,
-        name: `${attributes.first_name || ''} ${attributes.last_name || ''}`.trim(),
-        imageUrl: attributes.image_url
+        name: `${first_name || ''} ${last_name || ''}`.trim(),
+        imageUrl: image_url || undefined
       });
 
       logger.info("User synced successfully", {
