@@ -227,4 +227,63 @@ export const updateKPIStatus = mutation({
     return { success: true };
   },
 });
+
+/**
+ * Fix users with incorrect organizationId values
+ */
+export const fixUsersOrganizationId = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    const now = new Date().toISOString();
+    let fixedCount = 0;
+
+    // Get the default organization
+    const defaultOrg = await ctx.db
+      .query("organizations")
+      .filter((q) => q.eq(q.field("name"), "Default Organization"))
+      .first();
+
+    // Create default organization if it doesn't exist
+    const defaultOrgId = defaultOrg?._id || await ctx.db.insert("organizations", {
+      name: "Default Organization",
+      contactPerson: {
+        name: "System Admin",
+        email: "admin@aligno.app",
+      },
+      status: "active",
+      subscription: {
+        plan: "enterprise",
+        status: "active",
+        startDate: now,
+      },
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    for (const user of users) {
+      // Skip users with valid organizationId values
+      if (
+        user.organizationId === "SYSTEM" || 
+        user.organizationId === undefined || 
+        (typeof user.organizationId === "object" && user.organizationId !== null)
+      ) {
+        continue;
+      }
+
+      // Fix invalid organizationId values
+      const newOrgId = user.role === "super_admin" ? "SYSTEM" : 
+                      user.role === "pending" ? undefined : 
+                      defaultOrgId;
+
+      await ctx.db.patch(user._id, {
+        organizationId: newOrgId,
+        updatedAt: now
+      });
+      fixedCount++;
+    }
+
+    return { success: true, fixedCount };
+  },
+});
   

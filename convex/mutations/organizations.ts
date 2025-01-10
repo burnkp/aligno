@@ -32,7 +32,7 @@ export const create = mutation({
       email: args.contactPerson.email.toLowerCase(),
       name: args.contactPerson.name,
       role: "org_admin",
-      organizationId: organizationId,
+      organizationId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });

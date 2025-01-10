@@ -53,6 +53,10 @@ export const CreateUserModal = ({ isOpen, onClose }: CreateUserModalProps) => {
       // Generate a temporary userId that will be updated when the user signs in
       const tempUserId = `pending_${Date.now()}_${Math.random().toString(36).substring(2)}`;
 
+      if (!formData.organizationId) {
+        throw new Error("Please select an organization");
+      }
+
       await createUser({
         userId: tempUserId,
         name: formData.name,

@@ -47,7 +47,7 @@ export default defineSchema({
       v.literal("team_member"),
       v.literal("pending")
     ),
-    organizationId: v.union(v.literal("SYSTEM"), v.id("organizations"), v.null()),
+    organizationId: v.optional(v.union(v.literal("SYSTEM"), v.id("organizations"))),
     createdAt: v.string(),
     updatedAt: v.string(),
   })
