@@ -13,9 +13,11 @@ const publicRoutes = ["/", "/get-started", "/sign-in", "/sign-up", "/privacy-pol
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { isLoaded: isClerkLoaded, userId } = useAuth();
   const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
-  const user = useQuery(api.users.getUser, { userId: userId ?? "" });
   const router = useRouter();
   const pathname = usePathname();
+
+  // Only query for user data if we have a userId
+  const user = useQuery(api.users.getUser, userId ? { userId } : "skip");
 
   useEffect(() => {
     if (!isClerkLoaded || !isUserLoaded) return;
@@ -41,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // If no Convex user yet, show loading while webhook creates it
-    if (!user) {
+    if (userId && !user) {
       if (!isPublicRoute) {
         logger.info("Waiting for user record", { userId });
       }
@@ -49,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Handle different user states
-    if (user.role === "pending") {
+    if (user?.role === "pending") {
       if (pathname !== "/get-started") {
         logger.info("Redirecting pending user to get-started", { from: pathname });
         router.replace("/get-started");
@@ -57,13 +59,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (user.role === "super_admin" && pathname !== "/admin/dashboard") {
+    if (user?.role === "super_admin" && pathname !== "/admin/dashboard") {
       logger.info("Redirecting super admin to dashboard", { from: pathname });
       router.replace("/admin/dashboard");
       return;
     }
 
-    if (user.role === "org_admin" && !pathname.startsWith("/admin/organizations")) {
+    if (user?.role === "org_admin" && !pathname.startsWith("/admin/organizations")) {
       logger.info("Redirecting org admin to org dashboard", { 
         from: pathname,
         organizationId: user.organizationId 
@@ -71,20 +73,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       router.replace(`/admin/organizations/${user.organizationId}/welcome`);
       return;
     }
+  }, [isClerkLoaded, isUserLoaded, userId, user, clerkUser, router, pathname]);
 
-    logger.info("Auth check completed", {
-      role: user.role,
-      pathname
-    });
-  }, [isClerkLoaded, isUserLoaded, userId, clerkUser, user, router, pathname]);
-
-  // Show loading state while checking auth
+  // Show loading state while Clerk is initializing
   if (!isClerkLoaded || !isUserLoaded) {
-    return <AuthLoadingMinimal />;
-  }
-
-  // Show loading while waiting for user record
-  if (userId && !user && !publicRoutes.some(route => pathname?.startsWith(route))) {
     return <AuthLoadingMinimal />;
   }
 

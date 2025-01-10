@@ -16,15 +16,17 @@ function checkSuperAdmin(email: string): boolean {
 }
 
 export const getUser = query({
-  args: { userId: v.string() },
+  args: { userId: v.union(v.string(), v.literal("skip")) },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
+    // If skipped, return null
+    if (args.userId === "skip") {
+      return null;
     }
 
     // Return null for empty userId
-    if (!args.userId) return null;
+    if (!args.userId) {
+      return null;
+    }
 
     // Log the user lookup attempt
     logger.info("Looking up user", { userId: args.userId });
