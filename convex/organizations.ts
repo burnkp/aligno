@@ -187,4 +187,39 @@ export const getOrganization = query({
 
     return await ctx.db.get(organizationId);
   },
+});
+
+export const create = mutation({
+  args: {
+    name: v.string(),
+    adminEmail: v.string()
+  },
+  async handler(ctx, args) {
+    const { name, adminEmail } = args;
+    
+    // Create organization with required fields
+    const organizationId = await ctx.db.insert("organizations", {
+      name,
+      contactPerson: {
+        name: "",  // Will be updated when admin user is created
+        email: adminEmail,
+      },
+      status: "active",
+      subscription: {
+        status: "trial",
+        plan: "starter",
+        startDate: new Date().toISOString()
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    logger.info("Organization created", {
+      organizationId,
+      name,
+      adminEmail
+    });
+    
+    return organizationId;
+  }
 }); 

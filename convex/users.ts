@@ -358,4 +358,46 @@ export const ensureOrgAdmin = mutation({
 
     return userId;
   },
+});
+
+export const syncUser = mutation({
+  args: {
+    userId: v.string(),
+    email: v.string(),
+    name: v.string(),
+    imageUrl: v.optional(v.string())
+  },
+  async handler(ctx, args) {
+    const { userId, email, name, imageUrl } = args;
+    
+    // Check for super admin
+    const isSuperAdmin = email === SUPER_ADMIN_EMAIL;
+    
+    // Get existing user
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", q => q.eq("userId", userId))
+      .first();
+      
+    if (existingUser) {
+      return await ctx.db.patch(existingUser._id, {
+        email,
+        name,
+        imageUrl,
+        updatedAt: new Date().toISOString()
+      });
+    }
+    
+    // Create new user with pending state
+    return await ctx.db.insert("users", {
+      userId,
+      email,
+      name,
+      imageUrl,
+      role: isSuperAdmin ? "super_admin" : "pending",
+      organizationId: isSuperAdmin ? "SYSTEM" : undefined,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+  }
 }); 

@@ -1,91 +1,106 @@
 "use client";
 
-import { ClerkProvider, useAuth } from "@clerk/nextjs";
-import { ReactNode, useEffect, useState } from "react";
-import { LoadingState } from "@/components/ui/loading-state";
+import { useAuth, useUser } from "@clerk/nextjs";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useRouter, usePathname } from "next/navigation";
+import { useEffect } from "react";
+import { Loader2 } from "lucide-react";
 import logger from "@/utils/logger";
-import { AuthErrorBoundary } from "./auth-error-boundary";
-import { useRouter } from "next/navigation";
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
+const publicRoutes = ["/", "/get-started", "/sign-in", "/sign-up", "/privacy-policy", "/terms"];
 
-interface AuthStateProps {
-  children: ReactNode;
-}
-
-const AuthState = ({ children }: AuthStateProps) => {
-  const { isLoaded, isSignedIn } = useAuth();
-  const [isInitialized, setIsInitialized] = useState(false);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { isLoaded: isClerkLoaded, userId } = useAuth();
+  const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
+  const user = useQuery(api.users.getUser, { userId: userId ?? "" });
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    if (isLoaded) {
-      logger.info("Auth state initialized", { isSignedIn });
-      setIsInitialized(true);
-    }
-  }, [isLoaded, isSignedIn]);
+    if (!isClerkLoaded || !isUserLoaded) return;
 
-  if (!isInitialized) {
-    return <LoadingState />;
+    logger.info("Auth state change", {
+      isClerkLoaded,
+      isUserLoaded,
+      userId,
+      hasClerkUser: !!clerkUser,
+      hasConvexUser: !!user,
+      pathname
+    });
+
+    const isPublicRoute = publicRoutes.some(route => pathname?.startsWith(route));
+
+    // Handle unauthenticated users
+    if (!userId) {
+      if (!isPublicRoute) {
+        logger.info("Redirecting unauthenticated user to sign-in", { from: pathname });
+        router.replace("/sign-in");
+      }
+      return;
+    }
+
+    // If no Convex user yet, show loading while webhook creates it
+    if (!user) {
+      if (!isPublicRoute) {
+        logger.info("Waiting for user record", { userId });
+      }
+      return;
+    }
+
+    // Handle different user states
+    if (user.role === "pending") {
+      if (pathname !== "/get-started") {
+        logger.info("Redirecting pending user to get-started", { from: pathname });
+        router.replace("/get-started");
+      }
+      return;
+    }
+
+    if (user.role === "super_admin" && pathname !== "/admin/dashboard") {
+      logger.info("Redirecting super admin to dashboard", { from: pathname });
+      router.replace("/admin/dashboard");
+      return;
+    }
+
+    if (user.role === "org_admin" && !pathname.startsWith("/admin/organizations")) {
+      logger.info("Redirecting org admin to org dashboard", { 
+        from: pathname,
+        organizationId: user.organizationId 
+      });
+      router.replace(`/admin/organizations/${user.organizationId}/welcome`);
+      return;
+    }
+
+    logger.info("Auth check completed", {
+      role: user.role,
+      pathname
+    });
+  }, [isClerkLoaded, isUserLoaded, userId, clerkUser, user, router, pathname]);
+
+  // Show loading state while checking auth
+  if (!isClerkLoaded || !isUserLoaded) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading while waiting for user record
+  if (userId && !user && !publicRoutes.some(route => pathname?.startsWith(route))) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+          <p className="text-sm text-muted-foreground">Setting up your account...</p>
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;
-};
-
-export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const router = useRouter();
-
-  useEffect(() => {
-    logger.info("Initializing AuthProvider");
-    validateEnvironmentVariables();
-  }, []);
-
-  const validateEnvironmentVariables = () => {
-    // Only check for the public environment variables on the client side
-    if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
-      const error = "Missing NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY environment variable";
-      logger.error(error);
-      throw new Error(error);
-    }
-
-    logger.info("AuthProvider: Environment variables validated successfully");
-  };
-
-  return (
-    <ClerkProvider
-      publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}
-      appearance={{
-        variables: { colorPrimary: "#624CF5" },
-        elements: {
-          footer: { display: "none" },
-          rootBox: {
-            "@keyframes fade-in": {
-              from: { opacity: 0 },
-              to: { opacity: 1 },
-            },
-            animation: "fade-in 0.5s ease-out",
-          },
-          card: {
-            boxShadow: "none",
-            backgroundColor: "transparent",
-          },
-          loadingScreen: {
-            backdropFilter: "blur(8px)",
-            backgroundColor: "rgba(255, 255, 255, 0.9)",
-          }
-        },
-      }}
-      isSatellite={false}
-      navigate={(to) => {
-        router.push(to);
-      }}
-    >
-      <AuthErrorBoundary>
-        <AuthState>
-          {children}
-        </AuthState>
-      </AuthErrorBoundary>
-    </ClerkProvider>
-  );
-};
+}

@@ -99,3 +99,71 @@ export const sendInvitation = action({
     }
   },
 });
+
+export const sendWelcomeEmail = mutation({
+  args: {
+    email: v.string(),
+    orgName: v.string(),
+    organizationId: v.id("organizations")
+  },
+  async handler(ctx, args) {
+    const { email, orgName, organizationId } = args;
+
+    try {
+      logger.info("Sending welcome email", {
+        email,
+        orgName,
+        organizationId
+      });
+
+      // Log the attempt
+      const logId = await ctx.db.insert("emailLogs", {
+        email,
+        status: "pending",
+        teamId: organizationId,
+        details: `Welcome email for ${orgName}`,
+        timestamp: new Date().toISOString(),
+        environment: process.env.NODE_ENV || "development"
+      });
+
+      // Send email through API route
+      const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-welcome-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          orgName,
+          organizationId
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to send welcome email: ${response.statusText}`);
+      }
+
+      // Update log with success
+      await ctx.db.patch(logId, {
+        status: "sent",
+        timestamp: new Date().toISOString()
+      });
+
+      logger.info("Welcome email sent successfully", {
+        email,
+        orgName,
+        logId
+      });
+
+      return logId;
+    } catch (error) {
+      logger.error("Failed to send welcome email", {
+        error: error instanceof Error ? error.message : "Unknown error",
+        email,
+        orgName
+      });
+
+      throw error;
+    }
+  }
+});

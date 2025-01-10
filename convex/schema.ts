@@ -39,19 +39,20 @@ export default defineSchema({
     userId: v.string(),
     email: v.string(),
     name: v.string(),
+    imageUrl: v.optional(v.string()),
     role: v.union(
       v.literal("super_admin"),
       v.literal("org_admin"),
       v.literal("team_leader"),
-      v.literal("team_member")
+      v.literal("team_member"),
+      v.literal("pending")
     ),
-    organizationId: v.union(v.literal("SYSTEM"), v.id("organizations")),
+    organizationId: v.union(v.literal("SYSTEM"), v.id("organizations"), v.null()),
     createdAt: v.string(),
     updatedAt: v.string(),
   })
     .index("by_clerk_id", ["userId"])
-    .index("by_email", ["email"])
-    .index("by_organization", ["organizationId"]),
+    .index("by_email", ["email"]),
 
   // Teams table - Stores team data with organization mapping
   teams: defineTable({
