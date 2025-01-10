@@ -59,27 +59,34 @@ export default authMiddleware({
 
       // Special handling for auth-callback
       if (path === '/auth-callback') {
-        // Always require authentication for auth-callback
+        // If not authenticated, redirect to sign-in with preserved params
         if (!auth.userId) {
           logger.info("Auth-callback: Redirecting to sign-in", {
             email,
-            orgName
+            orgName,
+            userId: auth.userId
           });
           const signInUrl = preserveParams(new URL('/sign-in', req.url));
           return NextResponse.redirect(signInUrl);
         }
 
-        // If authenticated but no context, redirect to dashboard
-        if (!email && !orgName) {
-          logger.info("Auth-callback: No context, redirecting to dashboard");
-          return NextResponse.redirect(new URL('/dashboard', req.url));
+        // Verify email matches if provided
+        const userEmail = auth.sessionClaims?.email as string;
+        if (email && userEmail && email.toLowerCase() !== userEmail.toLowerCase()) {
+          logger.warn("Auth-callback: Email mismatch", {
+            providedEmail: email,
+            userEmail
+          });
+          return NextResponse.redirect(new URL('/error?code=email_mismatch', req.url));
         }
 
-        // Proceed with callback if we have both auth and context
-        logger.info("Auth-callback: Proceeding with full context", {
+        // Always proceed with auth-callback if authenticated
+        logger.info("Auth-callback: Proceeding with auth state", {
           userId: auth.userId,
+          userEmail,
           email,
-          orgName
+          orgName,
+          sessionClaims: auth.sessionClaims
         });
         return NextResponse.next();
       }

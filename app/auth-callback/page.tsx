@@ -76,7 +76,7 @@ export default function AuthCallback() {
           // Wait for user query to update
           return;
         }
-        router.push("/admin/dashboard");
+        router.replace("/admin/dashboard");
         return;
       }
 
@@ -109,7 +109,11 @@ export default function AuthCallback() {
           logger.info("Organization created, redirecting", {
             organizationId: user.organizationId
           });
-          router.push(`/admin/organizations/${user.organizationId}/welcome`);
+          if (user.organizationId === "SYSTEM") {
+            router.replace("/admin/dashboard");
+          } else {
+            router.replace(`/admin/organizations/${user.organizationId}/welcome`);
+          }
           setIsCreatingOrg(false);
           setCreatedUserId(null);
           return;
@@ -124,11 +128,11 @@ export default function AuthCallback() {
         });
 
         if (user.organizationId === "SYSTEM") {
-          router.push("/admin/dashboard");
+          router.replace("/admin/dashboard");
         } else if (user.role === "org_admin") {
-          router.push(`/admin/organizations/${user.organizationId}/welcome`);
+          router.replace(`/admin/organizations/${user.organizationId}/welcome`);
         } else {
-          router.push("/teams");
+          router.replace("/teams");
         }
         return;
       }
@@ -154,7 +158,7 @@ export default function AuthCallback() {
       });
       setIsCreatingOrg(false);
       setCreatedUserId(null);
-      router.push("/error");
+      router.replace("/error");
     }
   }, [
     isSignedIn,

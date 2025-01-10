@@ -8,20 +8,18 @@ export default function SignInPage() {
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
   const orgName = searchParams.get("orgName");
-  const redirectUrl = searchParams.get("redirect_url");
 
-  // Build the complete redirect URL with all necessary parameters
-  const completeRedirectUrl = new URL("/auth-callback", window.location.origin);
-  
-  // Preserve all search parameters
-  searchParams.forEach((value, key) => {
-    completeRedirectUrl.searchParams.set(key, value);
-  });
+  // Create state object to preserve context
+  const state = {
+    email,
+    orgName,
+    returnTo: "/auth-callback"
+  };
 
   logger.info("Sign In Page Loaded", {
     email,
     orgName,
-    redirectUrl: completeRedirectUrl.toString(),
+    state,
     allParams: Object.fromEntries(searchParams.entries())
   });
 
@@ -44,7 +42,7 @@ export default function SignInPage() {
             logoImageUrl: "/logo.png",
           },
         }}
-        redirectUrl={completeRedirectUrl.toString()}
+        afterSignInUrl={`/auth-callback?email=${encodeURIComponent(email || "")}&orgName=${encodeURIComponent(orgName || "")}`}
         signUpUrl="/sign-up"
         path="/sign-in"
         routing="path"
