@@ -16,8 +16,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Only query for user data if we have a userId
-  const user = useQuery(api.users.getUser, userId ? { userId } : "skip");
+  const isPublicRoute = publicRoutes.some(route => pathname?.startsWith(route));
+
+  // Skip user query for public routes or when there's no userId
+  const skipQuery = isPublicRoute || !userId;
+  const user = useQuery(api.users.getUser, skipQuery ? "skip" : { userId });
 
   useEffect(() => {
     if (!isClerkLoaded || !isUserLoaded) return;
@@ -28,25 +31,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       userId,
       hasClerkUser: !!clerkUser,
       hasConvexUser: !!user,
-      pathname
+      pathname,
+      isPublicRoute
     });
 
-    const isPublicRoute = publicRoutes.some(route => pathname?.startsWith(route));
+    // Allow public routes without authentication
+    if (isPublicRoute) {
+      return;
+    }
 
     // Handle unauthenticated users
     if (!userId) {
-      if (!isPublicRoute) {
-        logger.info("Redirecting unauthenticated user to sign-in", { from: pathname });
-        router.replace("/sign-in");
-      }
+      logger.info("Redirecting unauthenticated user to sign-in", { from: pathname });
+      router.replace("/sign-in");
       return;
     }
 
     // If no Convex user yet, show loading while webhook creates it
     if (userId && !user) {
-      if (!isPublicRoute) {
-        logger.info("Waiting for user record", { userId });
-      }
+      logger.info("Waiting for user record", { userId });
       return;
     }
 
@@ -73,10 +76,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       router.replace(`/admin/organizations/${user.organizationId}/welcome`);
       return;
     }
-  }, [isClerkLoaded, isUserLoaded, userId, user, clerkUser, router, pathname]);
+  }, [isClerkLoaded, isUserLoaded, userId, user, clerkUser, router, pathname, isPublicRoute]);
 
   // Show loading state while Clerk is initializing
   if (!isClerkLoaded || !isUserLoaded) {
+    return <AuthLoadingMinimal />;
+  }
+
+  // Don't show loading state for public routes
+  if (isPublicRoute) {
+    return <>{children}</>;
+  }
+
+  // Show loading while waiting for user data on protected routes
+  if (userId && !user && !isPublicRoute) {
     return <AuthLoadingMinimal />;
   }
 
