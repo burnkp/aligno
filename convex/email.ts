@@ -100,8 +100,6 @@ export const sendInvitation = action({
   },
 });
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export const sendWelcomeEmail = mutation({
   args: {
     email: v.string(),
@@ -113,8 +111,21 @@ export const sendWelcomeEmail = mutation({
     const { email, orgName, name, organizationId } = args;
 
     try {
+      const resendApiKey = process.env.RESEND_API_KEY;
+      if (!resendApiKey) {
+        throw new Error("RESEND_API_KEY is not configured");
+      }
+
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+      if (!appUrl) {
+        throw new Error("NEXT_PUBLIC_APP_URL is not configured");
+      }
+
+      // Initialize Resend with API key from environment
+      const resend = new Resend(resendApiKey);
+
       // Construct the sign-in URL with organization context
-      const signInUrl = new URL(process.env.NEXT_PUBLIC_APP_URL + "/sign-in");
+      const signInUrl = new URL(appUrl + "/sign-in");
       signInUrl.searchParams.set("redirect_url", `/auth/callback`);
       signInUrl.searchParams.set("email", email.toLowerCase());
       signInUrl.searchParams.set("orgName", orgName);
